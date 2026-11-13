@@ -55,7 +55,7 @@ What the table says, honestly:
 
 | Feature | Status | Where |
 |---|---|---|
-| Notebook UI (minimal design): chat-first page, Sources and Guide drawers, drop-anywhere upload, light + dark | Done | `web/` |
+| Notebook UI: ChatGPT-style chat with typed replies, black-and-white design, collapsible Sources and Guide columns, drop-anywhere upload, light + dark | Done | `web/` |
 | Answers only from the selected sources (per-selection FAISS + BM25 index) | Done | `ui/service.py` `DemoService.retriever(strategy, sources)` |
 | Per-source guide: summary + 4 LLM-written case-study questions (+ fixed off-topic one) | Done | `app/generation/guide.py`, `api/notebook.py` |
 | Five-step pipeline line per answer (Retrieve → Fuse → Rerank → Gate → Answer) | Done | `web/src/components/Pipeline.tsx` |
@@ -147,6 +147,7 @@ looked up through the `ChunkStore` protocol.
 ├── web/                       # Next.js 16 + TypeScript + Tailwind v4 notebook UI
 │   ├── src/app/               # layout.tsx (fonts), globals.css (colour tokens), page.tsx
 │   ├── src/lib/api.ts         # typed fetch client; types mirror api/schemas.py
+│   ├── src/lib/useTypewriter.ts # typed-out replies (presentational)
 │   ├── src/components/        # Notebook, SourcesPanel, ChatTurn, Pipeline, Evidence, GuidePanel
 │   └── README.md              # per-file table for the frontend
 ├── eval/
@@ -216,8 +217,9 @@ looked up through the `ChunkStore` protocol.
    - otherwise the LLM returns JSON claims (same prompt and schema for both providers) citing source *numbers*; `citations.py` maps them to real
      chunks, drops invented ones, and refuses (`refused_by_model`) if a claim is left uncited.
    - An LLM outage (413/429/503/timeout) is `error`, never counted as a refusal; retrieval is still shown.
-5. The browser draws the turn: the pipeline line (`stagesFor` marks each step done / skipped /
-   stopped), claims with superscript citations (click → quote inline), and the evidence list.
+5. The browser draws the turn like a chat: the question as a bubble, then the reply typed out
+   (`useTypewriter`), with superscript citations (click → quote inline), the pipeline line
+   (`stagesFor` marks each step done / skipped / stopped) and the evidence list.
 
 Statuses: `answered`, `refused_by_gate`, `refused_by_model`, `retrieval_only` (LLM switched off),
 `error`. The gate only runs for `+rerank` retrievers: its threshold is a cross-encoder score and
@@ -277,8 +279,9 @@ would shift the measured benchmark numbers.
 
 ## Design system
 
-Minimal and chat-first: white page (near-black in dark mode), neutral greys, one indigo accent,
-Inter, hairline borders. Colour tokens are CSS variables in `web/src/app/globals.css` (`--bg`,
+Chat-first and black-and-white only: white page (near-black in dark mode), greys, Inter, hairline
+borders; status shown by icons and weight, never colour. Replies are typed out client-side
+(`web/src/lib/useTypewriter.ts`); the API itself returns whole answers (no server streaming). Colour tokens are CSS variables in `web/src/app/globals.css` (`--bg`,
 `--surface`, `--ink`, `--muted`, `--faint`, `--line`, `--accent`, `--accent-soft`, `--good`,
 `--warn`, `--bad`) exposed to Tailwind as `bg-bg`, `text-muted`, etc. Details in `web/README.md`.
 

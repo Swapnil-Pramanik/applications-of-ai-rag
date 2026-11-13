@@ -74,7 +74,7 @@ export default function GuidePanel(props: Props) {
             className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${generate ? "bg-accent" : "bg-line"}`}
           >
             <span
-              className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow-sm transition-transform ${generate ? "translate-x-4" : ""}`}
+              className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-bg shadow-sm transition-transform ${generate ? "translate-x-4" : ""}`}
             />
           </button>
         </div>

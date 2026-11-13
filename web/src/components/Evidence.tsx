@@ -36,14 +36,16 @@ export default function Evidence({ result }: { result: QueryResponse }) {
               {p.title} <span className="text-faint">· p. {p.page_number}</span>
             </span>
             <span
-              className={`text-xs tabular-nums ${p.passed_gate === null ? "text-muted" : p.passed_gate ? "text-good" : "text-bad"}`}
+              className={`text-xs tabular-nums ${p.passed_gate === false ? "text-faint" : "text-ink"}`}
+              title={p.passed_gate === null ? undefined : p.passed_gate ? "passed the gate" : "below the gate"}
             >
               {p.score.toFixed(2)}
+              {p.passed_gate !== null && <span className="ml-1.5 text-faint">{p.passed_gate ? "✓" : "✕"}</span>}
             </span>
             {gate && (
               <span className="relative col-start-2 col-end-4 mt-1.5 h-0.5 rounded-full bg-line">
                 <span
-                  className={`absolute inset-y-0 left-0 rounded-full ${p.passed_gate ? "bg-good/70" : "bg-bad/60"}`}
+                  className={`absolute inset-y-0 left-0 rounded-full ${p.passed_gate ? "bg-ink" : "bg-faint/60"}`}
                   style={{ width: pos(p.score) }}
                 />
                 <span className="absolute -top-1 h-2.5 w-px bg-ink/60" style={{ left: pos(gate.threshold) }} />

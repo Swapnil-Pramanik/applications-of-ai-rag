@@ -58,11 +58,11 @@ export function stagesFor(
 
 const TONE: Record<StageState, string> = {
   idle: "text-faint",
-  running: "text-accent animate-pulse",
+  running: "text-ink animate-pulse",
   done: "text-muted",
   skipped: "text-faint/70 line-through",
-  stopped: "text-warn",
-  error: "text-bad",
+  stopped: "font-semibold text-ink",
+  error: "font-semibold text-ink",
 };
 
 const MARK: Record<StageState, string> = {

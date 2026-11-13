@@ -74,7 +74,7 @@ export default function SourcesPanel(props: Props) {
                     type="button"
                     onClick={() => props.onToggle(s.filename)}
                     className={`grid h-4 w-4 shrink-0 place-items-center rounded border transition-colors ${
-                      on ? "border-accent bg-accent text-white" : "border-line"
+                      on ? "border-ink bg-ink text-bg" : "border-faint"
                     }`}
                     aria-label={`${on ? "Exclude" : "Include"} ${s.filename}`}
                   >
