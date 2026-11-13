@@ -1,5 +1,5 @@
-import AskApp from "@/components/AskApp";
+import Notebook from "@/components/Notebook";
 
 export default function Home() {
-  return <AskApp />;
+  return <Notebook />;
 }

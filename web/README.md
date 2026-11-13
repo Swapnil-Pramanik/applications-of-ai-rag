@@ -1,8 +1,9 @@
-# web/ — Next.js presentation UI
+# web/ — Next.js notebook UI
 
-The frontend for *Ask the Papers*. It only draws: every decision (retrieval, gate, answer,
-footnote numbers, gate marks) comes from the FastAPI layer in `../api/`, which wraps the same
-`DemoService` the Streamlit demo and the eval harness use.
+The frontend for *Grounded Notebook*: a NotebookLM-style page with a **Sources** panel (add, tick,
+remove), a **chat** that answers only from the ticked sources, and a right-hand panel with the
+notebook guide, settings and how it works. It only draws: every decision (retrieval, gate, answer,
+footnote numbers, gate marks, case studies) comes from the FastAPI layer in `../api/`.
 
 ```bash
 make api          # terminal 1, from the repo root: API on http://localhost:8000
@@ -17,11 +18,13 @@ a slow Gemini call (up to ~45 s on the free tier) cannot hit a proxy timeout.
 |---|---|
 | `src/app/layout.tsx` | fonts (Inter, Newsreader), metadata |
 | `src/app/globals.css` | colour tokens (light + dark), Tailwind v4 theme |
-| `src/app/page.tsx` | renders `AskApp` |
-| `src/lib/api.ts` | typed client: `getMeta`, `ask`, `upload`; types mirror `api/schemas.py` |
-| `src/components/AskApp.tsx` | page state: question box, retriever, Gemini toggle, examples, upload, corpus list |
-| `src/components/Pipeline.tsx` | the five-step strip (Retrieve → Fuse → Rerank → Gate → Answer), lit per result |
-| `src/components/AnswerPanel.tsx` | cited claims with hoverable footnotes, sources, refusal / error banners |
-| `src/components/EvidencePanel.tsx` | top-5 passages, scores and a bar against the gate threshold |
+| `src/app/page.tsx` | renders `Notebook` |
+| `src/lib/api.ts` | typed client: `getMeta`, `getSources`, `addSource`, `removeSource`, `ask`; types mirror `api/schemas.py` |
+| `src/components/Notebook.tsx` | page state and three-column layout; polls sources while a guide is pending; runs questions and case studies against the ticked sources |
+| `src/components/SourcesPanel.tsx` | add (click or drop), tick / select all, remove, guide status |
+| `src/components/ChatTurn.tsx` | one question + answer: pipeline strip, expected behaviour for case studies, cited claims, refusal / error banners, collapsible evidence |
+| `src/components/Pipeline.tsx` | `stagesFor` (which of the five steps ran, where it stopped) and the pill row |
+| `src/components/Evidence.tsx` | top-5 passages, scores and a bar against the gate threshold |
+| `src/components/StudioPanel.tsx` | clicked citation, notebook guide (summaries), retriever + Gemini switch, how it works |
 
 Next.js 16 (App Router), React 19, TypeScript, Tailwind CSS v4. No component library.

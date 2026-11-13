@@ -1,92 +1,96 @@
 import type { QueryResponse } from "@/lib/api";
 
-type State = "idle" | "running" | "done" | "skipped" | "stopped" | "refused" | "error";
+export type StageState = "idle" | "running" | "done" | "skipped" | "stopped" | "error";
 
-interface Stage {
+export interface Stage {
   name: string;
   detail: string;
-  state: State;
+  state: StageState;
   note?: string;
 }
 
-/** Which of the five stages ran for this question, and where it stopped. */
+/** Which of the five pipeline steps ran for one question, and where it stopped. */
 export function stagesFor(
   strategy: string,
   generate: boolean,
   result: QueryResponse | null,
-  loading: boolean,
+  running: boolean,
 ): Stage[] {
   const [base, suffix] = strategy.split("+");
   const reranked = suffix === "rerank";
-  const ran = (on: boolean): State => (loading ? (on ? "running" : "skipped") : result ? (on ? "done" : "skipped") : on ? "idle" : "skipped");
+  const ran = (on: boolean): StageState =>
+    !on ? "skipped" : running ? "running" : result ? "done" : "idle";
 
-  const retrieveDetail =
-    base === "hybrid" ? "Dense (BGE + FAISS) and BM25, top 20 each" : base === "dense" ? "Dense only (BGE + FAISS)" : "BM25 keyword search only";
-
-  let gate: State = ran(reranked);
-  let answer: State = ran(generate);
+  let gate = ran(reranked);
+  let answer = ran(generate);
   let gateNote: string | undefined;
-  let answerNote: string | undefined;
-  if (result && !loading) {
+  let answerNote: string | undefined = generate ? undefined : "off";
+  if (result && !running) {
     if (result.status === "refused_by_gate") {
       gate = "stopped";
       answer = "skipped";
       answerNote = "never called";
     } else if (result.status === "refused_by_model") {
-      answer = "refused";
-      answerNote = "refused";
+      answer = "stopped";
+      answerNote = "model refused";
     } else if (result.status === "error") {
       answer = "error";
       answerNote = "unavailable";
     }
     if (result.gate?.top_score != null) gateNote = `best ${result.gate.top_score.toFixed(2)}`;
   }
-  if (!generate) answerNote = "off";
 
   return [
-    { name: "Retrieve", detail: retrieveDetail, state: ran(true) },
+    {
+      name: "Retrieve",
+      detail:
+        base === "hybrid"
+          ? "Dense (BGE + FAISS) and BM25 keyword search, top 20 each"
+          : base === "dense"
+            ? "Dense search only (BGE + FAISS)"
+            : "BM25 keyword search only",
+      state: ran(true),
+    },
     { name: "Fuse", detail: "Reciprocal Rank Fusion merges the two lists", state: ran(base === "hybrid") },
-    { name: "Rerank", detail: "Cross-encoder rescores, keeps top 5", state: ran(reranked) },
-    { name: "Gate", detail: "Refuse if no passage scores ≥ −2.0", state: gate, note: gateNote },
-    { name: "Answer", detail: "Gemini answers from the passages, citing each claim", state: answer, note: answerNote },
+    { name: "Rerank", detail: "A cross-encoder rescores and keeps the top 5", state: ran(reranked) },
+    { name: "Gate", detail: "Refuse if no passage scores above the threshold", state: gate, note: gateNote },
+    { name: "Answer", detail: "Gemini answers from the passages and cites each claim", state: answer, note: answerNote },
   ];
 }
 
-const STYLE: Record<State, string> = {
-  idle: "border-line bg-card",
-  running: "border-accent bg-accent-soft animate-pulse",
-  done: "border-good/50 bg-good-soft",
-  skipped: "border-dashed border-line bg-transparent opacity-50",
-  stopped: "border-warn bg-warn-soft",
-  refused: "border-warn bg-warn-soft",
-  error: "border-bad bg-bad-soft",
+const PILL: Record<StageState, string> = {
+  idle: "border-line text-muted",
+  running: "border-accent/40 bg-accent-soft text-accent animate-pulse",
+  done: "border-good/30 bg-good-soft text-good",
+  skipped: "border-dashed border-line text-muted/60 line-through",
+  stopped: "border-warn/40 bg-warn-soft text-warn",
+  error: "border-bad/40 bg-bad-soft text-bad",
 };
 
-const MARK: Record<State, string> = {
+const MARK: Record<StageState, string> = {
   idle: "",
-  running: "…",
-  done: "✓",
-  skipped: "–",
-  stopped: "✋",
-  refused: "✋",
-  error: "!",
+  running: "",
+  done: "✓ ",
+  skipped: "",
+  stopped: "✋ ",
+  error: "! ",
 };
 
+/** One row of five small pills; hover a pill for what that step does. */
 export default function Pipeline({ stages }: { stages: Stage[] }) {
   return (
-    <ol className="grid grid-cols-2 gap-2 sm:grid-cols-5" aria-label="Pipeline stages">
+    <ol className="flex flex-wrap items-center gap-1 text-xs" aria-label="Pipeline steps">
       {stages.map((stage, i) => (
-        <li
-          key={stage.name}
-          className={`relative rounded-xl border p-3 transition-colors duration-300 ${STYLE[stage.state]}`}
-        >
-          <div className="flex items-center justify-between text-xs font-medium text-muted">
-            <span>Step {i + 1}</span>
-            <span aria-hidden className="text-sm text-ink">{MARK[stage.state]}</span>
-          </div>
-          <div className="mt-1 font-semibold">{stage.name}</div>
-          <p className="mt-1 text-xs leading-snug text-muted">{stage.detail}</p>
-          {stage.note && <p className="mt-1 text-xs font-medium text-ink">{stage.note}</p>}
+        <li key={stage.name} className="flex items-center gap-1">
+          <span
+            title={`${stage.detail}${stage.state === "skipped" ? " (not used by this retriever)" : ""}`}
+            className={`rounded-full border px-2 py-0.5 font-medium ${PILL[stage.state]}`}
+          >
+            {MARK[stage.state]}
+            {stage.name}
+            {stage.note && <span className="font-normal opacity-80"> · {stage.note}</span>}
+          </span>
+          {i < stages.length - 1 && <span className="text-muted/50">→</span>}
         </li>
       ))}
     </ol>

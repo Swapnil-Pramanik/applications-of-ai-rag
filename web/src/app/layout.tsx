@@ -6,9 +6,9 @@ const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Ask the Papers",
+  title: "Grounded Notebook",
   description:
-    "Cited question answering over 18 landmark ML papers: hybrid retrieval, reranking, an abstention gate and Gemini.",
+    "Ask questions of your own documents: hybrid retrieval, reranking, an abstention gate and cited Gemini answers.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,5 +1,5 @@
 // Types mirror api/schemas.py. The API computes everything (titles, footnote
-// numbers, gate marks); this app only draws it.
+// numbers, gate marks, case studies); this app only draws it.
 
 export type Status =
   | "answered"
@@ -18,7 +18,7 @@ export interface Passage {
   text: string;
 }
 
-export interface Source {
+export interface Citation {
   number: number;
   title: string;
   source_filename: string;
@@ -39,7 +39,7 @@ export interface QueryResponse {
   strategy_label: string;
   status: Status;
   claims: { text: string; sources: number[] }[];
-  sources: Source[];
+  sources: Citation[];
   abstain_reason: string | null;
   error: string | null;
   gate: Gate | null;
@@ -47,17 +47,26 @@ export interface QueryResponse {
   seconds: number;
 }
 
-export interface Meta {
-  papers: { title: string; chunks: number; uploaded: boolean }[];
-  chunk_count: number;
-  strategies: { key: string; label: string }[];
-  examples: { label: string; question: string }[];
+export interface CaseStudy {
+  kind: string;
+  label: string;
+  question: string;
+  expect: string;
 }
 
-export interface UploadResponse {
+export interface Source {
   filename: string;
   chunks: number;
-  chunk_count: number;
+  guide_status: "pending" | "ready" | "failed";
+  guide_error: string | null;
+  summary: string | null;
+  case_studies: CaseStudy[];
+}
+
+export interface Meta {
+  strategies: { key: string; label: string }[];
+  gate_threshold: number;
+  max_upload_mb: number;
 }
 
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -72,24 +81,27 @@ async function call<T>(path: string, init?: RequestInit): Promise<T> {
   if (!response.ok) {
     const body = await response.json().catch(() => null);
     const detail = body?.detail;
-    throw new Error(
-      typeof detail === "string" ? detail : `Request failed (${response.status})`,
-    );
+    throw new Error(typeof detail === "string" ? detail : `Request failed (${response.status})`);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
 export const getMeta = () => call<Meta>("/api/meta");
+export const getSources = () => call<Source[]>("/api/sources");
 
-export const ask = (question: string, strategy: string, generate: boolean) =>
+export function addSource(file: File) {
+  const form = new FormData();
+  form.append("file", file);
+  return call<Source>("/api/sources", { method: "POST", body: form });
+}
+
+export const removeSource = (filename: string) =>
+  call<void>(`/api/sources/${encodeURIComponent(filename)}`, { method: "DELETE" });
+
+export const ask = (question: string, strategy: string, generate: boolean, sources: string[]) =>
   call<QueryResponse>("/api/query", {
     method: "POST",
     headers: { "content-type": "application/json" },
-    body: JSON.stringify({ question, strategy, generate }),
+    body: JSON.stringify({ question, strategy, generate, sources }),
   });
-
-export function upload(file: File) {
-  const form = new FormData();
-  form.append("file", file);
-  return call<UploadResponse>("/api/upload", { method: "POST", body: form });
-}
