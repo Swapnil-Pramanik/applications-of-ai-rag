@@ -1,0 +1,113 @@
+{
+  "rows": [
+    {
+      "threshold": -10.0,
+      "answerable_pass_rate": 1.0,
+      "gate_catch_rate": 0.1429,
+      "overall_catch_rate": 0.05,
+      "model_expected_caught_early": 0.0,
+      "youden_j": 0.1429
+    },
+    {
+      "threshold": -8.0,
+      "answerable_pass_rate": 1.0,
+      "gate_catch_rate": 0.3571,
+      "overall_catch_rate": 0.125,
+      "model_expected_caught_early": 0.0,
+      "youden_j": 0.3571
+    },
+    {
+      "threshold": -6.0,
+      "answerable_pass_rate": 1.0,
+      "gate_catch_rate": 0.5714,
+      "overall_catch_rate": 0.2,
+      "model_expected_caught_early": 0.0,
+      "youden_j": 0.5714
+    },
+    {
+      "threshold": -4.0,
+      "answerable_pass_rate": 1.0,
+      "gate_catch_rate": 0.7857,
+      "overall_catch_rate": 0.3,
+      "model_expected_caught_early": 0.0385,
+      "youden_j": 0.7857
+    },
+    {
+      "threshold": -2.0,
+      "answerable_pass_rate": 0.95,
+      "gate_catch_rate": 0.9286,
+      "overall_catch_rate": 0.425,
+      "model_expected_caught_early": 0.1538,
+      "youden_j": 0.8786
+    },
+    {
+      "threshold": -1.0,
+      "answerable_pass_rate": 0.9167,
+      "gate_catch_rate": 0.9286,
+      "overall_catch_rate": 0.5,
+      "model_expected_caught_early": 0.2692,
+      "youden_j": 0.8453
+    },
+    {
+      "threshold": 0.0,
+      "answerable_pass_rate": 0.9,
+      "gate_catch_rate": 0.9286,
+      "overall_catch_rate": 0.575,
+      "model_expected_caught_early": 0.3846,
+      "youden_j": 0.8286
+    },
+    {
+      "threshold": 1.0,
+      "answerable_pass_rate": 0.85,
+      "gate_catch_rate": 0.9286,
+      "overall_catch_rate": 0.65,
+      "model_expected_caught_early": 0.5,
+      "youden_j": 0.7786
+    },
+    {
+      "threshold": 2.0,
+      "answerable_pass_rate": 0.7833,
+      "gate_catch_rate": 0.9286,
+      "overall_catch_rate": 0.725,
+      "model_expected_caught_early": 0.6154,
+      "youden_j": 0.7119
+    },
+    {
+      "threshold": 4.0,
+      "answerable_pass_rate": 0.6167,
+      "gate_catch_rate": 1.0,
+      "overall_catch_rate": 0.9,
+      "model_expected_caught_early": 0.8462,
+      "youden_j": 0.6167
+    },
+    {
+      "threshold": 6.0,
+      "answerable_pass_rate": 0.3,
+      "gate_catch_rate": 1.0,
+      "overall_catch_rate": 0.975,
+      "model_expected_caught_early": 0.9615,
+      "youden_j": 0.3
+    },
+    {
+      "threshold": 8.0,
+      "answerable_pass_rate": 0.0667,
+      "gate_catch_rate": 1.0,
+      "overall_catch_rate": 1.0,
+      "model_expected_caught_early": 1.0,
+      "youden_j": 0.0667
+    }
+  ],
+  "selected": {
+    "threshold": -2.0,
+    "answerable_pass_rate": 0.95,
+    "gate_catch_rate": 0.9286,
+    "overall_catch_rate": 0.425,
+    "model_expected_caught_early": 0.1538,
+    "youden_j": 0.8786
+  },
+  "min_answerable_pass_rate": 0.95,
+  "adversarial_verified_fraction": 0.0,
+  "authoritative": false,
+  "timestamp": "2026-08-27T06:39:32+00:00",
+  "platform": "Darwin-arm64"
+}

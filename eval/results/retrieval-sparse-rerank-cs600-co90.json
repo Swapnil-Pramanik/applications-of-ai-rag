@@ -1,0 +1,730 @@
+{
+  "config": {
+    "strategy": "sparse+rerank",
+    "chunk_size": 600,
+    "chunk_overlap": 90,
+    "candidate_k": 20,
+    "rrf_k": 60,
+    "embedding_model": "BAAI/bge-small-en-v1.5"
+  },
+  "scores": {
+    "n_questions": 60,
+    "k": 10,
+    "recall_at_k": {
+      "1": 0.3167,
+      "3": 0.5,
+      "5": 0.5667,
+      "10": 0.6833
+    },
+    "mrr_at_k": {
+      "1": 0.3167,
+      "3": 0.3861,
+      "5": 0.4011,
+      "10": 0.4159
+    },
+    "ndcg_at_k": 0.5231
+  },
+  "by_type": {
+    "comparative": {
+      "n": 12.0,
+      "recall_at_5": 0.5,
+      "ndcg": 0.5015
+    },
+    "factual": {
+      "n": 17.0,
+      "recall_at_5": 0.6471,
+      "ndcg": 0.5927
+    },
+    "multi_hop": {
+      "n": 12.0,
+      "recall_at_5": 0.1667,
+      "ndcg": 0.2688
+    },
+    "numeric": {
+      "n": 19.0,
+      "recall_at_5": 0.7895,
+      "ndcg": 0.635
+    }
+  },
+  "n_chunks": 2277,
+  "verified_fraction": 1.0,
+  "authoritative": true,
+  "timestamp": "2026-08-27T05:36:43+00:00",
+  "platform": "Darwin-arm64-py3.11.15",
+  "per_question": [
+    {
+      "question_id": "g001",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1706.03762.pdf",
+        "2010.11929.pdf",
+        "2006.11239.pdf"
+      ]
+    },
+    {
+      "question_id": "g002",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1706.03762.pdf",
+        "2005.14165.pdf",
+        "2010.11929.pdf"
+      ]
+    },
+    {
+      "question_id": "g003",
+      "question_type": "numeric",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2002.08909.pdf",
+        "2005.11401.pdf",
+        "1502.03167.pdf",
+        "1412.6980.pdf",
+        "2010.11929.pdf",
+        "2005.14165.pdf",
+        "1312.5602.pdf",
+        "1706.03762.pdf"
+      ]
+    },
+    {
+      "question_id": "g004",
+      "question_type": "factual",
+      "rank": 8,
+      "ndcg": 0.31546487678572877,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2002.08909.pdf",
+        "1810.04805.pdf"
+      ]
+    },
+    {
+      "question_id": "g005",
+      "question_type": "numeric",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2005.14165.pdf",
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g006",
+      "question_type": "factual",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2005.14165.pdf",
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g007",
+      "question_type": "numeric",
+      "rank": 4,
+      "ndcg": 0.43067655807339306,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1512.03385.pdf",
+        "1502.03167.pdf"
+      ]
+    },
+    {
+      "question_id": "g008",
+      "question_type": "factual",
+      "rank": 7,
+      "ndcg": 0.3333333333333333,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1512.03385.pdf"
+      ]
+    },
+    {
+      "question_id": "g009",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2010.11929.pdf"
+      ]
+    },
+    {
+      "question_id": "g010",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2010.11929.pdf",
+        "1502.03167.pdf",
+        "1706.03762.pdf"
+      ]
+    },
+    {
+      "question_id": "g011",
+      "question_type": "numeric",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1506.02640.pdf",
+        "1502.03167.pdf"
+      ]
+    },
+    {
+      "question_id": "g012",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1506.02640.pdf"
+      ]
+    },
+    {
+      "question_id": "g013",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1406.2661.pdf",
+        "2006.11239.pdf",
+        "2010.11929.pdf",
+        "1312.5602.pdf",
+        "2005.14165.pdf"
+      ]
+    },
+    {
+      "question_id": "g014",
+      "question_type": "factual",
+      "rank": 4,
+      "ndcg": 0.43067655807339306,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2006.11239.pdf",
+        "1406.2661.pdf",
+        "1707.06347.pdf",
+        "1412.6980.pdf",
+        "2004.04906.pdf"
+      ]
+    },
+    {
+      "question_id": "g015",
+      "question_type": "numeric",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2006.11239.pdf",
+        "1707.06347.pdf",
+        "2004.04906.pdf"
+      ]
+    },
+    {
+      "question_id": "g016",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2006.11239.pdf"
+      ]
+    },
+    {
+      "question_id": "g017",
+      "question_type": "numeric",
+      "rank": 8,
+      "ndcg": 0.31546487678572877,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2010.11929.pdf",
+        "1707.06347.pdf",
+        "2106.09685.pdf",
+        "2006.11239.pdf",
+        "1412.6980.pdf"
+      ]
+    },
+    {
+      "question_id": "g018",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1412.6980.pdf",
+        "2010.11929.pdf",
+        "1707.06347.pdf"
+      ]
+    },
+    {
+      "question_id": "g019",
+      "question_type": "numeric",
+      "rank": 5,
+      "ndcg": 0.38685280723454163,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1502.03167.pdf"
+      ]
+    },
+    {
+      "question_id": "g020",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 0.6131471927654584,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "1502.03167.pdf"
+      ]
+    },
+    {
+      "question_id": "g021",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g022",
+      "question_type": "factual",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g023",
+      "question_type": "numeric",
+      "rank": 9,
+      "ndcg": 0.3010299956639812,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2004.04906.pdf"
+      ]
+    },
+    {
+      "question_id": "g024",
+      "question_type": "factual",
+      "rank": 7,
+      "ndcg": 0.3333333333333333,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2004.04906.pdf"
+      ]
+    },
+    {
+      "question_id": "g025",
+      "question_type": "numeric",
+      "rank": 2,
+      "ndcg": 0.6309297535714575,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2002.08909.pdf"
+      ]
+    },
+    {
+      "question_id": "g026",
+      "question_type": "factual",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2002.08909.pdf",
+        "2005.11401.pdf"
+      ]
+    },
+    {
+      "question_id": "g027",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 0.9197207891481876,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2005.11401.pdf"
+      ]
+    },
+    {
+      "question_id": "g028",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2005.11401.pdf"
+      ]
+    },
+    {
+      "question_id": "g029",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1702.08734.pdf",
+        "2005.11401.pdf"
+      ]
+    },
+    {
+      "question_id": "g030",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1702.08734.pdf"
+      ]
+    },
+    {
+      "question_id": "g031",
+      "question_type": "numeric",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1603.02754.pdf"
+      ]
+    },
+    {
+      "question_id": "g032",
+      "question_type": "factual",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "1603.02754.pdf"
+      ]
+    },
+    {
+      "question_id": "g033",
+      "question_type": "numeric",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1312.5602.pdf",
+        "1707.06347.pdf"
+      ]
+    },
+    {
+      "question_id": "g034",
+      "question_type": "factual",
+      "rank": 2,
+      "ndcg": 0.6309297535714575,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1603.02754.pdf",
+        "1312.5602.pdf",
+        "1506.02640.pdf",
+        "2010.11929.pdf"
+      ]
+    },
+    {
+      "question_id": "g035",
+      "question_type": "numeric",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1707.06347.pdf"
+      ]
+    },
+    {
+      "question_id": "g036",
+      "question_type": "factual",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1707.06347.pdf"
+      ]
+    },
+    {
+      "question_id": "g037",
+      "question_type": "comparative",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 4,
+      "retrieved_sources": [
+        "2005.14165.pdf",
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g038",
+      "question_type": "comparative",
+      "rank": 7,
+      "ndcg": 0.3333333333333333,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1506.02640.pdf"
+      ]
+    },
+    {
+      "question_id": "g039",
+      "question_type": "comparative",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2004.04906.pdf"
+      ]
+    },
+    {
+      "question_id": "g040",
+      "question_type": "comparative",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2010.11929.pdf",
+        "1506.02640.pdf",
+        "1412.6980.pdf",
+        "1810.04805.pdf"
+      ]
+    },
+    {
+      "question_id": "g041",
+      "question_type": "comparative",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1412.6980.pdf",
+        "2010.11929.pdf",
+        "2005.14165.pdf",
+        "2005.11401.pdf"
+      ]
+    },
+    {
+      "question_id": "g042",
+      "question_type": "comparative",
+      "rank": 2,
+      "ndcg": 0.6309297535714575,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2005.11401.pdf"
+      ]
+    },
+    {
+      "question_id": "g043",
+      "question_type": "comparative",
+      "rank": 3,
+      "ndcg": 0.5,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1707.06347.pdf"
+      ]
+    },
+    {
+      "question_id": "g044",
+      "question_type": "comparative",
+      "rank": null,
+      "ndcg": 0.6131471927654584,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "1810.04805.pdf"
+      ]
+    },
+    {
+      "question_id": "g045",
+      "question_type": "comparative",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "2006.11239.pdf",
+        "1406.2661.pdf",
+        "1506.02640.pdf"
+      ]
+    },
+    {
+      "question_id": "g046",
+      "question_type": "comparative",
+      "rank": 1,
+      "ndcg": 1.0,
+      "n_relevant": 1,
+      "retrieved_sources": [
+        "1707.06347.pdf",
+        "1312.5602.pdf"
+      ]
+    },
+    {
+      "question_id": "g047",
+      "question_type": "comparative",
+      "rank": null,
+      "ndcg": 0.2640681225725909,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g048",
+      "question_type": "comparative",
+      "rank": null,
+      "ndcg": 0.17630010660342912,
+      "n_relevant": 15,
+      "retrieved_sources": [
+        "2005.11401.pdf",
+        "2002.08909.pdf"
+      ]
+    },
+    {
+      "question_id": "g049",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.3391602052736161,
+      "n_relevant": 5,
+      "retrieved_sources": [
+        "1706.03762.pdf",
+        "2106.09685.pdf",
+        "1412.6980.pdf",
+        "2010.11929.pdf",
+        "1810.04805.pdf",
+        "2002.08909.pdf"
+      ]
+    },
+    {
+      "question_id": "g050",
+      "question_type": "multi_hop",
+      "rank": 3,
+      "ndcg": 0.615733440277688,
+      "n_relevant": 5,
+      "retrieved_sources": [
+        "2106.09685.pdf",
+        "2005.14165.pdf"
+      ]
+    },
+    {
+      "question_id": "g051",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2010.11929.pdf",
+        "2004.04906.pdf",
+        "1810.04805.pdf"
+      ]
+    },
+    {
+      "question_id": "g052",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2005.11401.pdf",
+        "2004.04906.pdf"
+      ]
+    },
+    {
+      "question_id": "g053",
+      "question_type": "multi_hop",
+      "rank": 10,
+      "ndcg": 0.5640920940185894,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2004.04906.pdf",
+        "2005.11401.pdf",
+        "1702.08734.pdf"
+      ]
+    },
+    {
+      "question_id": "g054",
+      "question_type": "multi_hop",
+      "rank": 5,
+      "ndcg": 0.6240505200038379,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2010.11929.pdf",
+        "1706.03762.pdf",
+        "1810.04805.pdf"
+      ]
+    },
+    {
+      "question_id": "g055",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.46927872602275644,
+      "n_relevant": 3,
+      "retrieved_sources": [
+        "1810.04805.pdf",
+        "2010.11929.pdf",
+        "2002.08909.pdf",
+        "2004.04906.pdf",
+        "2005.14165.pdf",
+        "2106.09685.pdf"
+      ]
+    },
+    {
+      "question_id": "g056",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2005.14165.pdf",
+        "2004.04906.pdf",
+        "2010.11929.pdf"
+      ]
+    },
+    {
+      "question_id": "g057",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.6131471927654584,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2006.11239.pdf",
+        "2005.14165.pdf"
+      ]
+    },
+    {
+      "question_id": "g058",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 3,
+      "retrieved_sources": [
+        "1506.02640.pdf",
+        "1512.03385.pdf"
+      ]
+    },
+    {
+      "question_id": "g059",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "2004.04906.pdf",
+        "2002.08909.pdf"
+      ]
+    },
+    {
+      "question_id": "g060",
+      "question_type": "multi_hop",
+      "rank": null,
+      "ndcg": 0.0,
+      "n_relevant": 2,
+      "retrieved_sources": [
+        "1502.03167.pdf"
+      ]
+    }
+  ]
+}

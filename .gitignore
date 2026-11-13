@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Env / secrets
+.env
+
+# FAISS index artifacts (rebuilt, not committed)
+*.faiss
+*.bm25
+*.index
+
+# Corpus PDFs (large binaries, re-downloadable via scripts/fetch_corpus.py)
+data/papers/
+
+# OS
+.DS_Store
+
+# Private project context — not for the public repo
+CLAUDE.md
+
+# Interview rehearsal notes — deliberately says things the README shouldn't
+# (which numbers are weak, which choices were budget-driven, where the holes are)
+interview.md
+
+# FAISS / BM25 indexes (rebuilt by ingestion, not committed)
+data/indexes/
+
+# Derived ingestion cache for the eval harness — rebuilt by `make eval`.
+eval/.cache/

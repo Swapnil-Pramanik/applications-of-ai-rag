@@ -1,0 +1,38 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  lint-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install dependencies
+        run: uv sync --all-extras --dev
+
+      - name: Lint (ruff)
+        run: uv run ruff check .
+
+      - name: Format check (ruff)
+        run: uv run ruff format --check .
+
+      - name: Type check (mypy)
+        run: uv run mypy app eval scripts
+
+      - name: Validate golden set (schema only — CI has no corpus PDFs)
+        run: uv run python -m eval.harness.validate_golden --schema-only
+
+      # Coverage gate (fail_under = 70) lives in pyproject.toml, so this step
+      # fails for exactly the same reason `make test` does locally.
+      - name: Test (pytest, coverage gate)
+        run: uv run pytest --cov=app --cov=eval --cov-report=term-missing

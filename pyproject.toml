@@ -1,0 +1,51 @@
+[project]
+name = "applications-of-ai-sam-project"
+version = "0.1.0"
+description = "Cited question answering over ML research papers (hybrid retrieval + reranking + abstention)"
+requires-python = ">=3.11"
+dependencies = [
+    "faiss-cpu>=1.8",
+    "google-genai>=2.20.0",
+    "pydantic-settings>=2.15.0",
+    "pymupdf>=1.28.2",
+    "python-docx>=1.2.0",
+    "rank-bm25>=0.2.2",
+    "sentence-transformers>=3.0",
+    "structlog>=26.1.0",
+]
+
+[dependency-groups]
+dev = [
+    "mypy>=2.3.1",
+    "pytest>=9.1.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.3",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "session"
+asyncio_default_test_loop_scope = "session"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+# The eval harness is a deliverable, not a script — it is held to the same gate as app/.
+source = ["app", "eval"]
+
+[tool.coverage.report]
+# The one number in Section 2 that stays a hard target rather than a reference
+# point: it measures our own discipline, not what the models and corpus can do.
+fail_under = 70
