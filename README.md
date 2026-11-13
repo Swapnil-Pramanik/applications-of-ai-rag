@@ -55,11 +55,11 @@ What the table says, honestly:
 
 | Feature | Status | Where |
 |---|---|---|
-| Notebook UI: sources panel (upload, tick, remove), chat, notebook guide, settings | Done | `web/` |
+| Notebook UI (minimal design): chat-first page, Sources and Guide drawers, drop-anywhere upload, light + dark | Done | `web/` |
 | Answers only from the selected sources (per-selection FAISS + BM25 index) | Done | `ui/service.py` `DemoService.retriever(strategy, sources)` |
 | Per-source guide: summary + 4 LLM-written case-study questions (+ fixed off-topic one) | Done | `app/generation/guide.py`, `api/notebook.py` |
-| Five-step pipeline strip per answer (Retrieve → Fuse → Rerank → Gate → Answer) | Done | `web/src/components/Pipeline.tsx` |
-| Clickable citations, evidence list with score-vs-gate bars | Done | `web/src/components/ChatTurn.tsx`, `Evidence.tsx` |
+| Five-step pipeline line per answer (Retrieve → Fuse → Rerank → Gate → Answer) | Done | `web/src/components/Pipeline.tsx` |
+| Superscript citations that open the quoted passage inline; evidence list with score-vs-gate bars | Done | `web/src/components/ChatTurn.tsx`, `Evidence.tsx` |
 | "Answer with the LLM" off switch: retrieval only, no API quota | Done | `web/`, `DemoService.ask(generate=False)` |
 | PDF / DOCX / TXT / MD parsing with page numbers | Done | `app/ingestion/parsers.py` |
 | Recursive chunking (600 chars, 90 overlap) | Done | `app/ingestion/chunker.py` |
@@ -147,7 +147,7 @@ looked up through the `ChunkStore` protocol.
 ├── web/                       # Next.js 16 + TypeScript + Tailwind v4 notebook UI
 │   ├── src/app/               # layout.tsx (fonts), globals.css (colour tokens), page.tsx
 │   ├── src/lib/api.ts         # typed fetch client; types mirror api/schemas.py
-│   ├── src/components/        # Notebook, SourcesPanel, ChatTurn, Pipeline, Evidence, StudioPanel
+│   ├── src/components/        # Notebook, SourcesPanel, ChatTurn, Pipeline, Evidence, GuidePanel
 │   └── README.md              # per-file table for the frontend
 ├── eval/
 │   ├── golden_set/
@@ -216,8 +216,8 @@ looked up through the `ChunkStore` protocol.
    - otherwise the LLM returns JSON claims (same prompt and schema for both providers) citing source *numbers*; `citations.py` maps them to real
      chunks, drops invented ones, and refuses (`refused_by_model`) if a claim is left uncited.
    - An LLM outage (413/429/503/timeout) is `error`, never counted as a refusal; retrieval is still shown.
-5. The browser draws the turn: pipeline strip (`stagesFor` marks each step done / skipped /
-   stopped), claims with citation chips (click → citation panel), and the evidence list.
+5. The browser draws the turn: the pipeline line (`stagesFor` marks each step done / skipped /
+   stopped), claims with superscript citations (click → quote inline), and the evidence list.
 
 Statuses: `answered`, `refused_by_gate`, `refused_by_model`, `retrieval_only` (LLM switched off),
 `error`. The gate only runs for `+rerank` retrievers: its threshold is a cross-encoder score and
@@ -275,12 +275,19 @@ BM25-only retriever finds nothing. The default hybrid retriever still finds it t
 search, and real documents have dozens of chunks. The BM25 variant was not changed because that
 would shift the measured benchmark numbers.
 
+## Design system
+
+Minimal and chat-first: white page (near-black in dark mode), neutral greys, one indigo accent,
+Inter, hairline borders. Colour tokens are CSS variables in `web/src/app/globals.css` (`--bg`,
+`--surface`, `--ink`, `--muted`, `--faint`, `--line`, `--accent`, `--accent-soft`, `--good`,
+`--warn`, `--bad`) exposed to Tailwind as `bg-bg`, `text-muted`, etc. Details in `web/README.md`.
+
 ## Dependencies
 
 Runtime: `sentence-transformers`, `faiss-cpu`, `rank-bm25`, `pymupdf`, `python-docx`,
 `google-genai`, `httpx` (Groq calls), `pydantic-settings`, `structlog`, `streamlit`, `fastapi`,
 `uvicorn`, `python-multipart`. Frontend (`web/package.json`): `next` 16, `react` 19, `tailwindcss` 4,
-`typescript`, `eslint`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `httpx`, `ruff`, `mypy`.
+`typescript`, `eslint`, `lucide-react` (icons, pinned). Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `httpx`, `ruff`, `mypy`.
 Managed with `uv` (Python 3.11) and `npm` (Node 22+).
 
 ## Configuration

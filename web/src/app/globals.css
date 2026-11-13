@@ -1,65 +1,67 @@
 @import "tailwindcss";
 
-/* Light, high-contrast palette chosen for projectors; dark mode follows the OS. */
+/* Minimal palette: white, neutral greys, one accent. Dark mode follows the OS. */
 :root {
-  --paper: #f7f5f0;
-  --card: #ffffff;
-  --ink: #1b1d22;
-  --muted: #5f6470;
-  --line: #e3dfd6;
-  --accent: #3b4fd8;
-  --accent-soft: #e9ecfd;
-  --good: #1f7a4d;
-  --good-soft: #e3f3ea;
-  --warn: #9a5b00;
-  --warn-soft: #fdf1dc;
-  --bad: #b42335;
-  --bad-soft: #fbe6e9;
+  --bg: #ffffff;
+  --surface: #fafafa;
+  --ink: #18181b;
+  --muted: #71717a;
+  --faint: #a1a1aa;
+  --line: #ececef;
+  --accent: #4f46e5;
+  --accent-soft: #eef0fe;
+  --good: #16a34a;
+  --warn: #d97706;
+  --bad: #dc2626;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --paper: #14161b;
-    --card: #1c1f26;
-    --ink: #eceef2;
-    --muted: #9aa0ad;
-    --line: #2d313b;
-    --accent: #8b9bff;
-    --accent-soft: #252b4a;
-    --good: #5fd39a;
-    --good-soft: #17322a;
-    --warn: #f0b44c;
-    --warn-soft: #382a12;
-    --bad: #ff7a8a;
-    --bad-soft: #3a1c22;
+    --bg: #0c0c0e;
+    --surface: #141417;
+    --ink: #ececef;
+    --muted: #a1a1aa;
+    --faint: #6b6b74;
+    --line: #232328;
+    --accent: #8b93ff;
+    --accent-soft: #1d1f3a;
+    --good: #4ade80;
+    --warn: #fbbf24;
+    --bad: #f87171;
   }
 }
 
 @theme inline {
-  --color-paper: var(--paper);
-  --color-card: var(--card);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
   --color-ink: var(--ink);
   --color-muted: var(--muted);
+  --color-faint: var(--faint);
   --color-line: var(--line);
   --color-accent: var(--accent);
   --color-accent-soft: var(--accent-soft);
   --color-good: var(--good);
-  --color-good-soft: var(--good-soft);
   --color-warn: var(--warn);
-  --color-warn-soft: var(--warn-soft);
   --color-bad: var(--bad);
-  --color-bad-soft: var(--bad-soft);
   --font-sans: var(--font-inter);
-  --font-serif: var(--font-newsreader);
 }
 
 body {
-  background: var(--paper);
+  background: var(--bg);
   color: var(--ink);
 }
 
-@keyframes rise {
-  from { opacity: 0; transform: translateY(6px); }
+::selection {
+  background: var(--accent-soft);
+}
+
+@keyframes fade-up {
+  from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: none; }
 }
-.rise { animation: rise 0.35s ease-out both; }
+.fade-up { animation: fade-up 0.3s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-up { animation: none; }
+  * { transition: none !important; }
+}

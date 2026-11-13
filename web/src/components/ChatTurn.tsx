@@ -1,5 +1,6 @@
 "use client";
 
+import { ChevronRight, CircleSlash, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 
 import Evidence from "@/components/Evidence";
@@ -17,137 +18,147 @@ export interface Turn {
   error?: string;
 }
 
-function Banner({ tone, title, children }: { tone: "warn" | "bad" | "info"; title: string; children: React.ReactNode }) {
-  const style = {
-    warn: "border-warn/40 bg-warn-soft",
-    bad: "border-bad/40 bg-bad-soft",
-    info: "border-accent/30 bg-accent-soft",
-  }[tone];
-  const titleColor = { warn: "text-warn", bad: "text-bad", info: "text-accent" }[tone];
+function Note({ tone, icon, children }: { tone: "warn" | "bad" | "muted"; icon: React.ReactNode; children: React.ReactNode }) {
+  const color = { warn: "text-warn", bad: "text-bad", muted: "text-muted" }[tone];
   return (
-    <div className={`rounded-xl border p-3 ${style}`}>
-      <div className={`text-sm font-semibold ${titleColor}`}>{title}</div>
-      <div className="mt-1 text-sm">{children}</div>
+    <div className="flex gap-2.5 leading-7">
+      <span className={`mt-1.5 shrink-0 ${color}`}>{icon}</span>
+      <div className="text-muted">{children}</div>
     </div>
   );
 }
 
-function Body({ result, onCite }: { result: QueryResponse; onCite: (c: Citation) => void }) {
+function Body({ result, cited, onCite }: { result: QueryResponse; cited: number | null; onCite: (n: number) => void }) {
   const { status, gate } = result;
   if (status === "refused_by_gate" && gate) {
     return (
-      <Banner tone="warn" title="Refused before calling the LLM">
-        Nothing in the selected sources looked relevant: the best passage scored{" "}
-        <strong>{gate.top_score?.toFixed(2)}</strong>, below the gate of{" "}
-        <strong>{gate.threshold.toFixed(1)}</strong>. The LLM was never asked, so it could not guess.
-      </Banner>
+      <Note tone="warn" icon={<CircleSlash size={16} />}>
+        <span className="text-ink">Not in your sources.</span> Refused before calling the LLM: the best
+        passage scored <span className="tabular-nums">{gate.top_score?.toFixed(2)}</span>, below the gate
+        of <span className="tabular-nums">{gate.threshold.toFixed(1)}</span>.
+      </Note>
     );
   }
   if (status === "refused_by_model") {
     return (
-      <Banner tone="warn" title="The sources don't answer this">
-        The LLM read the top passages and judged them insufficient: {result.abstain_reason}
-      </Banner>
+      <Note tone="warn" icon={<CircleSlash size={16} />}>
+        <span className="text-ink">Your sources don&apos;t answer this.</span> {result.abstain_reason}
+      </Note>
     );
   }
   if (status === "error") {
     return (
-      <Banner tone="bad" title="The LLM is unavailable">
-        {result.error} An outage is an error, never counted as a refusal.
-      </Banner>
+      <Note tone="bad" icon={<TriangleAlert size={16} />}>
+        <span className="text-ink">The LLM is unavailable.</span> {result.error}
+      </Note>
     );
   }
   if (status === "retrieval_only") {
     return (
-      <Banner tone="info" title="Generation is off">
-        Showing only what retrieval found (no LLM quota used). Open the evidence below.
-      </Banner>
+      <Note tone="muted" icon={<ChevronRight size={16} />}>
+        Answers are switched off. Open the evidence to see what retrieval found.
+      </Note>
     );
   }
-
-  const byNumber = new Map(result.sources.map((s) => [s.number, s]));
   return (
-    <div className="space-y-2 font-serif text-lg leading-relaxed">
+    <div className="space-y-3 text-[16px] leading-7">
       {result.claims.map((claim, i) => (
         <p key={i}>
           {claim.text}
-          {claim.sources.map((n) => {
-            const cite = byNumber.get(n);
-            return (
+          {claim.sources.map((n) => (
+            <sup key={n}>
               <button
-                key={n}
                 type="button"
-                onClick={() => cite && onCite(cite)}
-                title={cite ? `${cite.title}, page ${cite.page_number}` : undefined}
-                className="ml-1 inline-flex h-5 min-w-5 -translate-y-0.5 items-center justify-center rounded-full bg-accent-soft px-1.5 align-middle font-sans text-[11px] font-semibold text-accent hover:bg-accent hover:text-white"
+                onClick={() => onCite(n)}
+                className={`ml-0.5 inline-block rounded px-1 text-[11px] leading-4 font-semibold transition-colors ${
+                  cited === n ? "bg-accent text-white" : "text-accent hover:bg-accent-soft"
+                }`}
                 aria-label={`Citation ${n}`}
               >
                 {n}
               </button>
-            );
-          })}
+            </sup>
+          ))}
         </p>
       ))}
     </div>
   );
 }
 
-export default function ChatTurn({ turn, onCite }: { turn: Turn; onCite: (c: Citation) => void }) {
+function CitationQuote({ citation }: { citation: Citation }) {
+  return (
+    <figure className="fade-up mt-4 rounded-xl bg-surface px-4 py-3">
+      <figcaption className="text-xs text-muted">
+        <span className="font-semibold text-accent">[{citation.number}]</span> {citation.title} · page{" "}
+        {citation.page_number}
+      </figcaption>
+      <blockquote className="mt-1.5 text-sm leading-relaxed">{citation.quote}</blockquote>
+    </figure>
+  );
+}
+
+export default function ChatTurn({ turn }: { turn: Turn }) {
   const [showEvidence, setShowEvidence] = useState(false);
+  const [cited, setCited] = useState<number | null>(null);
   const running = !turn.result && !turn.error;
   const stages = stagesFor(turn.strategy, turn.generate, turn.result ?? null, running);
+  const citation = turn.result?.sources.find((s) => s.number === cited);
 
   return (
-    <div className="rise space-y-3">
-      <div className="flex justify-end">
-        <div className="max-w-[85%] rounded-2xl rounded-br-md bg-accent px-4 py-2.5 text-white">
-          {turn.caseStudy && (
-            <div className="mb-1 text-xs font-semibold tracking-wide text-white/80 uppercase">
-              Case study · {turn.caseStudy.label}
-            </div>
-          )}
-          {turn.question}
+    <article className="fade-up">
+      {turn.caseStudy && (
+        <div className="mb-1 text-[11px] font-medium tracking-wider text-faint uppercase">
+          Case study · {turn.caseStudy.label}
         </div>
-      </div>
+      )}
+      <h2 className="text-xl font-semibold tracking-tight">{turn.question}</h2>
 
-      <div className="rounded-2xl rounded-tl-md border border-line bg-card p-4 shadow-sm">
-        <Pipeline stages={stages} />
-        {turn.caseStudy && (
-          <p className="mt-2 text-xs text-muted">
-            <span className="font-semibold">Expected:</span> {turn.caseStudy.expect}
+      <div className="mt-4">
+        {running && (
+          <p className="flex items-center gap-2 text-muted">
+            <span className="inline-flex gap-1" aria-hidden>
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-faint [animation-delay:-0.3s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-faint [animation-delay:-0.15s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-faint" />
+            </span>
+            Reading {turn.sourceCount} source{turn.sourceCount === 1 ? "" : "s"}
           </p>
         )}
-
-        <div className="mt-3">
-          {running && (
-            <p className="animate-pulse text-sm text-muted">
-              Searching {turn.sourceCount} source{turn.sourceCount === 1 ? "" : "s"}
-              {turn.generate ? " and asking the LLM…" : "…"}
-            </p>
-          )}
-          {turn.error && <Banner tone="bad" title="Request failed">{turn.error}</Banner>}
-          {turn.result && <Body result={turn.result} onCite={onCite} />}
-        </div>
-
+        {turn.error && (
+          <Note tone="bad" icon={<TriangleAlert size={16} />}>
+            {turn.error}
+          </Note>
+        )}
         {turn.result && (
-          <div className="mt-3 border-t border-line pt-2">
+          <Body result={turn.result} cited={cited} onCite={(n) => setCited(cited === n ? null : n)} />
+        )}
+        {citation && <CitationQuote citation={citation} />}
+      </div>
+
+      <div className="mt-5 border-t border-line pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <Pipeline stages={stages} />
+          {turn.result && (
             <button
               type="button"
               onClick={() => setShowEvidence(!showEvidence)}
-              className="text-xs font-medium text-muted hover:text-ink"
+              className="flex items-center gap-1 text-xs text-muted hover:text-ink"
               aria-expanded={showEvidence}
             >
-              {showEvidence ? "▾" : "▸"} Evidence: {turn.result.passages.length} passages ·{" "}
-              {turn.result.strategy_label} · {turn.result.seconds.toFixed(2)}s
+              <ChevronRight size={14} className={`transition-transform ${showEvidence ? "rotate-90" : ""}`} />
+              Evidence · {turn.result.seconds.toFixed(1)}s
             </button>
-            {showEvidence && (
-              <div className="mt-2">
-                <Evidence result={turn.result} />
-              </div>
-            )}
+          )}
+        </div>
+        {turn.caseStudy && (
+          <p className="mt-1.5 text-xs text-faint">Expected · {turn.caseStudy.expect}</p>
+        )}
+        {showEvidence && turn.result && (
+          <div className="fade-up mt-3">
+            <Evidence result={turn.result} />
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 }

@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import type { QueryResponse } from "@/lib/api";
 
-/** The retrieved passages, with each score drawn against the gate threshold. */
+/** The retrieved passages; for +rerank retrievers, each score drawn against the gate. */
 export default function Evidence({ result }: { result: QueryResponse }) {
   const [open, setOpen] = useState<number | null>(null);
   const { gate, passages } = result;
@@ -17,51 +17,46 @@ export default function Evidence({ result }: { result: QueryResponse }) {
   const pos = (x: number) => `${((x - lo) / (hi - lo)) * 100}%`;
 
   return (
-    <div>
-      <p className="text-xs text-muted">
+    <div className="space-y-1">
+      <p className="pb-1 text-xs text-faint">
         {gate
-          ? `Cross-encoder scores. The black tick is the gate (${gate.threshold.toFixed(1)}); passages below it are never shown to the LLM.`
-          : `${result.strategy_label}: these scores are not cross-encoder scores, so the gate is off.`}
+          ? `Relevance scores from the cross-encoder. The tick marks the gate (${gate.threshold.toFixed(1)}); passages below it never reach the LLM.`
+          : `${result.strategy_label}: no cross-encoder scores, so the gate is off.`}
       </p>
-      <ol className="mt-2 space-y-1.5">
-        {passages.map((p) => (
-          <li key={p.rank} className="rounded-lg border border-line">
-            <button
-              type="button"
-              onClick={() => setOpen(open === p.rank ? null : p.rank)}
-              className="w-full px-3 py-2 text-left"
-              aria-expanded={open === p.rank}
+      {passages.map((p) => (
+        <div key={p.rank}>
+          <button
+            type="button"
+            onClick={() => setOpen(open === p.rank ? null : p.rank)}
+            className="group grid w-full grid-cols-[1.25rem_1fr_auto] items-center gap-x-3 rounded-lg px-2 py-1.5 text-left text-sm hover:bg-surface"
+            aria-expanded={open === p.rank}
+          >
+            <span className="text-xs text-faint tabular-nums">{p.rank}</span>
+            <span className="min-w-0 truncate text-muted group-hover:text-ink">
+              {p.title} <span className="text-faint">· p. {p.page_number}</span>
+            </span>
+            <span
+              className={`text-xs tabular-nums ${p.passed_gate === null ? "text-muted" : p.passed_gate ? "text-good" : "text-bad"}`}
             >
-              <div className="flex items-center justify-between gap-3 text-sm">
-                <span className="min-w-0 truncate">
-                  <span className="text-muted">#{p.rank}</span> {p.title}{" "}
-                  <span className="text-muted">· p. {p.page_number}</span>
-                </span>
-                <span className="shrink-0 font-mono text-xs">
-                  {p.score.toFixed(2)}
-                  {p.passed_gate !== null && (
-                    <span className={`ml-2 font-sans font-medium ${p.passed_gate ? "text-good" : "text-bad"}`}>
-                      {p.passed_gate ? "passed" : "below gate"}
-                    </span>
-                  )}
-                </span>
-              </div>
-              {gate && (
-                <div className="relative mt-1.5 h-1 rounded-full bg-line">
-                  <div
-                    className={`absolute inset-y-0 left-0 rounded-full ${p.passed_gate ? "bg-good" : "bg-bad"}`}
-                    style={{ width: pos(p.score) }}
-                  />
-                  <div className="absolute -inset-y-1 w-0.5 bg-ink" style={{ left: pos(gate.threshold) }} />
-                </div>
-              )}
-            </button>
-            {open === p.rank && (
-              <p className="border-t border-line px-3 py-2 text-sm leading-relaxed text-muted">{p.text}</p>
+              {p.score.toFixed(2)}
+            </span>
+            {gate && (
+              <span className="relative col-start-2 col-end-4 mt-1.5 h-0.5 rounded-full bg-line">
+                <span
+                  className={`absolute inset-y-0 left-0 rounded-full ${p.passed_gate ? "bg-good/70" : "bg-bad/60"}`}
+                  style={{ width: pos(p.score) }}
+                />
+                <span className="absolute -top-1 h-2.5 w-px bg-ink/60" style={{ left: pos(gate.threshold) }} />
+              </span>
             )}
-          </li>
-        ))}
-      </ol>
+          </button>
+          {open === p.rank && (
+            <p className="fade-up mx-2 mb-2 border-l border-line pl-3 text-sm leading-relaxed text-muted">
+              {p.text}
+            </p>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
