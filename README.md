@@ -6,8 +6,9 @@ whose every claim cites a source paper, page and passage — or an explicit refu
 don't support an answer.
 
 Built as a semester project for *Applications of AI*. It is a deliberately scoped-down copy of a
-larger RAG service: the multi-tenant API, database, caching, tracing and cloud deployment were cut
-so a team of 1–2 can finish, understand and present it in one month.
+larger RAG service: the multi-tenant auth, database, caching, tracing and cloud deployment were cut
+so a team of 1–2 can finish, understand and present it in one month. A small local JSON API
+(`api/`, no auth or database) serves the same pipeline to the Next.js frontend in `web/`.
 
 ## Measured results (60 human-verified questions, 600/90 chunking)
 
@@ -54,7 +55,9 @@ What the table says, honestly:
 | Evaluation harness (Recall@k, MRR, nDCG, per-type) | Done | `eval/harness/` |
 | Chunk size / overlap sweep (six arms, losers recorded) | Done | `eval/harness/sweep.py` |
 | Streamlit demo: examples, retriever switch, cited answer, top-5 passages with gate marks | Done | `ui/` |
-| Polished presentation UI | Planned (if time) | — |
+| JSON API: `/api/query`, `/api/upload` (your own PDF/DOCX/TXT/MD), `/api/meta`, `/api/health` | Done | `api/` |
+| Upload-your-own-document (in memory; never changes the eval corpus) | Done | `ui/service.py` `DemoService.add_document` |
+| Next.js presentation UI | In progress | `web/` |
 | Verified abstention rate (40 adversarial Qs) | Planned | `eval/golden_set/adversarial.jsonl` |
 
 ## Architecture
@@ -76,6 +79,7 @@ What the table says, honestly:
 
  eval/harness:  golden questions ─▶ same retrieval code ─▶ Recall@k / MRR / nDCG ─▶ eval/results/
  ui/:           streamlit_app.py (draws) ─▶ service.py (decides) ─▶ QueryPipeline
+ api/:          FastAPI routes ─▶ schemas.to_response ─▶ the same ui/service.py DemoService
 ```
 
 Layers talk only through small interfaces: every retriever implements
@@ -126,8 +130,11 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 │   │   ├── calibrate.py       # abstention-threshold sweep (no Gemini calls)
 │   │   └── validate_golden.py # checks every span really occurs on its page
 │   └── results/               # committed JSON / markdown results
+├── api/
+│   ├── main.py                # FastAPI app: /api/health, /api/meta, /api/query, /api/upload
+│   └── schemas.py             # Pydantic request/response models + DemoResult -> JSON
 ├── ui/
-│   ├── service.py             # demo logic, no Streamlit: DemoService, examples, labels
+│   ├── service.py             # demo logic, no Streamlit: DemoService, examples, uploads
 │   └── streamlit_app.py       # the Streamlit page (drawing only; not `app.py`, see below)
 ├── scripts/fetch_corpus.py    # downloads the 18 PDFs into data/papers/
 ├── tests/
@@ -153,6 +160,8 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 | `eval/harness` | Measure retrieval and calibrate the gate | `load_corpus`, `EvalCorpus.build_retriever`, `run`, `sweep` |
 | `ui/service.py` | Load corpus + models once, run a question through a chosen retriever, report the outcome | `DemoService.ask() -> DemoResult`, `EXAMPLES`, `numbered_claims` |
 | `ui/streamlit_app.py` | Render settings, examples, answer, sources, retrieved passages | Streamlit only, no logic |
+| `api/main.py` | HTTP wrapper over `DemoService`; validates strategy, file type (pdf/docx/txt/md) and size (20 MB) | `create_app(service=None)`, `app` |
+| `api/schemas.py` | Turn a `DemoResult` into JSON the frontend only has to draw (titles, footnote numbers, gate marks) | `QueryRequest`, `QueryResponse`, `to_response` |
 
 ## Request flow
 
@@ -175,6 +184,14 @@ which returns a `DemoResult` with one of five statuses: `answered`, `refused_by_
 outage; retrieval is still shown). The confidence gate only runs for `+rerank` retrievers, because
 its threshold is a cross-encoder score and means nothing against cosine/BM25/RRF scores.
 
+**API flow** (`make api`, port 8000, Swagger docs at `/docs`): the FastAPI lifespan calls
+`load_service()` once and stores it on `app.state`. `POST /api/query {question, strategy, generate}`
+→ `DemoService.ask` → `to_response` → `QueryResponse` with `status`, numbered `claims`, `sources`,
+`gate` and `passages`. `POST /api/upload` (multipart `file`) writes the file to a temp dir and calls
+`DemoService.add_document`, which ingests it at the corpus's chunking, appends it under a lock and
+drops the cached retrievers so the next query sees it. Uploads live in memory only and are gone on
+restart. No auth, rate limiting or streaming: it is a local demo backend.
+
 The page is `ui/streamlit_app.py`, not `ui/app.py`: Streamlit adds `ui/` to the import path, and a
 file named `app.py` there would shadow the `app` package.
 
@@ -190,6 +207,10 @@ file named `app.py` there would shadow the `app` package.
   the gate dropped), `abstain_source` (`gate` / `model` / `None`).
 - `DemoResult` (`ui/service.py`) — `question, strategy, retrieved, gate | None, answer | None,
   error | None, seconds`, plus `status` and `passed_gate(chunk)`.
+- `UploadResult` — `filename, chunks`. `UploadError` for a duplicate filename or no extractable text.
+- `QueryResponse` (`api/schemas.py`) — `status, claims[{text, sources[]}], sources[{number, title,
+  page_number, quote}], abstain_reason, error, gate{passed, threshold, top_score, reason},
+  passages[{rank, title, page_number, score, passed_gate, text}], seconds`.
 
 ## External services and data
 
@@ -201,10 +222,18 @@ file named `app.py` there would shadow the `app` package.
 
 No database. Everything runs in memory on a laptop; both models are small and CPU-only.
 
+| Endpoint | Method | Purpose |
+|---|---|---|
+| `/api/health` | GET | liveness + chunk count |
+| `/api/meta` | GET | papers (with `uploaded` flag), strategies, example questions |
+| `/api/query` | POST | JSON `{question, strategy="hybrid+rerank", generate=true}` → `QueryResponse` |
+| `/api/upload` | POST | multipart `file` (.pdf/.docx/.txt/.md, ≤20 MB) → `{filename, chunks, chunk_count}` |
+
 ## Dependencies
 
 Runtime: `sentence-transformers`, `faiss-cpu`, `rank-bm25`, `pymupdf`, `python-docx`,
-`google-genai`, `pydantic-settings`, `structlog`, `streamlit`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`,
+`google-genai`, `pydantic-settings`, `structlog`, `streamlit`, `fastapi`, `uvicorn`,
+`python-multipart`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `httpx`,
 `ruff`, `mypy`. Managed with `uv` (Python 3.11).
 
 ## Configuration
@@ -220,6 +249,7 @@ by an environment variable of the same name in upper case.
 uv sync                 # install
 make corpus             # download the 18 PDFs (once)
 make demo               # Streamlit demo at http://localhost:8501 (first load ~20-30s)
+make api                # JSON API at http://localhost:8000 (docs at /docs)
 make test               # unit + integration tests, 70% coverage gate
 make eval               # headline Recall@k for hybrid+rerank
 make eval-ablation      # all six retrievers

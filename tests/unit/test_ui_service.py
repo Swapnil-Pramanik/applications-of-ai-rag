@@ -6,15 +6,19 @@ LLM are stubs that go in through the same parameters production uses.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
+import pytest
 
 from app.core.config import settings
 from app.generation.gemini import GenerationUnavailableError
 from app.generation.schema import Answer, Citation, Claim, ModelAnswer, ModelClaim
+from app.ingestion.embedder import Embedder
 from app.ingestion.pipeline import EmbeddedChunk
 from app.retrieval.reranker import Reranker
 from eval.harness.corpus_index import STRATEGIES, EvalCorpus
-from ui.service import EXAMPLES, STRATEGY_LABELS, DemoService, numbered_claims
+from ui.service import EXAMPLES, STRATEGY_LABELS, DemoService, UploadError, numbered_claims
 
 TEXTS = [
     ("1412.6980.pdf", "adam default settings are alpha 0.001 beta1 0.9 beta2 0.999"),
@@ -143,3 +147,51 @@ def test_claims_sharing_a_source_share_its_footnote_number() -> None:
 def test_every_strategy_has_a_label_and_examples_are_non_empty() -> None:
     assert set(STRATEGY_LABELS) == set(STRATEGIES)
     assert all(example.question for example in EXAMPLES)
+
+
+class OnesModel:
+    """Embedding stub: every text maps to the same unit-ish vector."""
+
+    def encode(self, texts: list[str], **kwargs: object) -> np.ndarray:
+        return np.ones((len(texts), settings.embedding_dim), dtype=np.float32)
+
+
+def uploading_service() -> DemoService:
+    return DemoService(
+        make_corpus(),
+        reranker=FixedReranker(5.0),
+        client=StubClient(),
+        embedder=Embedder(model=OnesModel()),  # type: ignore[arg-type]
+    )
+
+
+def test_an_uploaded_document_becomes_searchable(tmp_path: Path) -> None:
+    demo = uploading_service()
+    before = demo.chunk_count
+    demo.retriever("sparse")  # built before the upload; must not be reused after it
+    doc = tmp_path / "notes.txt"
+    doc.write_text("the zebrafish optimizer uses a learning rate of 0.42", encoding="utf-8")
+
+    result = demo.add_document(doc)
+
+    assert result.filename == "notes.txt" and result.chunks >= 1
+    assert demo.chunk_count == before + result.chunks
+    assert demo.uploaded == ["notes.txt"]
+    top = demo.ask("zebrafish optimizer", "sparse", generate=False).retrieved[0]
+    assert top.source_filename == "notes.txt"
+    # Vector ids continue after the corpus rather than colliding with it.
+    assert top.vector_id >= len(TEXTS)
+
+
+def test_uploading_a_duplicate_or_empty_file_is_rejected(tmp_path: Path) -> None:
+    demo = uploading_service()
+    duplicate = tmp_path / "1412.6980.pdf"
+    duplicate.write_bytes(b"irrelevant")
+    with pytest.raises(UploadError, match="already in the corpus"):
+        demo.add_document(duplicate)
+
+    empty = tmp_path / "empty.txt"
+    empty.write_text("   ", encoding="utf-8")
+    with pytest.raises(UploadError, match="no text"):
+        demo.add_document(empty)
+    assert demo.uploaded == []

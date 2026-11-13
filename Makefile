@@ -1,4 +1,4 @@
-.PHONY: setup demo test lint format typecheck corpus validate-golden eval eval-ablation eval-sweep eval-calibrate
+.PHONY: setup demo api test lint format typecheck corpus validate-golden eval eval-ablation eval-sweep eval-calibrate
 
 setup:
 	uv sync
@@ -8,8 +8,12 @@ setup:
 demo:
 	uv run python -m streamlit run ui/streamlit_app.py
 
+# JSON API for the Next.js frontend on http://localhost:8000 (interactive docs at /docs).
+api:
+	uv run uvicorn api.main:app --port 8000
+
 test:
-	uv run pytest --cov=app --cov=eval --cov=ui --cov-report=term-missing
+	uv run pytest --cov=app --cov=eval --cov=ui --cov=api --cov-report=term-missing
 
 lint:
 	uv run ruff check .
@@ -18,7 +22,7 @@ format:
 	uv run ruff format .
 
 typecheck:
-	uv run mypy app eval scripts ui
+	uv run mypy app eval scripts ui api
 
 # Downloads the 18 arXiv PDFs into data/papers/ (skip if already present).
 corpus:

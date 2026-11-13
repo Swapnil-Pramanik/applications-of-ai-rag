@@ -10,14 +10,20 @@ what the audience sees is the system the numbers describe.
 
 from __future__ import annotations
 
+import threading
 import time
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Literal
+
+import numpy as np
 
 from app.core.config import settings
 from app.core.corpus import title_for
 from app.generation.gemini import GenerationUnavailableError, StructuredClient
 from app.generation.schema import Answer, Citation, Claim
+from app.ingestion.embedder import Embedder
+from app.ingestion.pipeline import ingest_document
 from app.pipeline import QueryPipeline
 from app.retrieval.base import RetrievedChunk, Retriever
 from app.retrieval.confidence import ConfidenceGate, GateDecision
@@ -72,6 +78,16 @@ EXAMPLES: tuple[Example, ...] = (
         "Not in paper", "What was the total dollar cost of training the Transformer base model?"
     ),
 )
+
+
+class UploadError(ValueError):
+    """An upload that cannot be added: duplicate name or nothing to index."""
+
+
+@dataclass(frozen=True)
+class UploadResult:
+    filename: str
+    chunks: int
 
 
 @dataclass(frozen=True)
@@ -141,9 +157,15 @@ class DemoService:
         *,
         reranker: Reranker | None = None,
         client: StructuredClient | None = None,
+        embedder: Embedder | None = None,
         top_k: int | None = None,
     ):
         self._corpus = corpus
+        self._embedder = embedder
+        self._uploaded: list[str] = []
+        # Guards swapping the corpus on upload against a question being answered
+        # at the same moment (the API serves requests on a thread pool).
+        self._lock = threading.Lock()
         # One cross-encoder shared by every +rerank arm, so switching retrievers
         # in the dropdown does not load the model again.
         self._reranker = reranker or Reranker()
@@ -163,12 +185,55 @@ class DemoService:
             counts[title] = counts.get(title, 0) + 1
         return sorted(counts.items())
 
+    @property
+    def uploaded(self) -> list[str]:
+        """Filenames added with `add_document`, in upload order."""
+        return list(self._uploaded)
+
     def retriever(self, strategy: str) -> Retriever:
-        if strategy not in self._retrievers:
-            self._retrievers[strategy] = self._corpus.build_retriever(
-                strategy, reranker=self._reranker
+        with self._lock:
+            if strategy not in self._retrievers:
+                self._retrievers[strategy] = self._corpus.build_retriever(
+                    strategy, reranker=self._reranker
+                )
+            return self._retrievers[strategy]
+
+    def add_document(self, path: Path) -> UploadResult:
+        """Parse, chunk and embed one file and make it searchable.
+
+        In memory only: the upload is gone when the process restarts, and it
+        never touches `data/papers/`, so the measured eval numbers cannot
+        change because someone uploaded a PDF during a demo. Raises
+        `UploadError` for a duplicate filename or a file with no text, and the
+        parser's `UnsupportedFormatError` for an unknown extension.
+        """
+        known = {chunk.source_filename for chunk in self._corpus.chunks}
+        if path.name in known:
+            raise UploadError(f"{path.name} is already in the corpus")
+
+        start = max((c.vector_id for c in self._corpus.chunks), default=-1) + 1
+        result = ingest_document(
+            path,
+            embedder=self._embedder,
+            chunk_size=self._corpus.chunk_size,
+            chunk_overlap=self._corpus.chunk_overlap,
+            start_vector_id=start,
+        )
+        if not result.chunks:
+            raise UploadError(f"no text could be extracted from {path.name}")
+
+        with self._lock:
+            old = self._corpus
+            self._corpus = EvalCorpus(
+                old.chunks + result.chunks,
+                np.vstack([old.vectors, result.vectors]),
+                old.chunk_size,
+                old.chunk_overlap,
             )
-        return self._retrievers[strategy]
+            # Every retriever indexes the whole corpus, so all are now stale.
+            self._retrievers.clear()
+            self._uploaded.append(path.name)
+        return UploadResult(filename=path.name, chunks=len(result.chunks))
 
     def ask(self, question: str, strategy: str, *, generate: bool = True) -> DemoResult:
         started = time.perf_counter()
