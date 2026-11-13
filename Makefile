@@ -1,4 +1,4 @@
-.PHONY: setup demo test lint format typecheck corpus validate-golden eval eval-ablation eval-calibrate
+.PHONY: setup demo test lint format typecheck corpus validate-golden eval eval-ablation eval-sweep eval-calibrate
 
 setup:
 	uv sync
@@ -40,6 +40,11 @@ eval-ablation:
 	uv run python -m eval.harness.runner --strategy dense+rerank --require-verified 1.0
 	uv run python -m eval.harness.runner --strategy sparse+rerank --require-verified 1.0
 	uv run python -m eval.harness.runner --strategy hybrid+rerank --require-verified 1.0
+
+# Chunk size then overlap: six arms, strategy held at hybrid+rerank. Writes
+# eval/results/chunk-sweep.md plus one JSON per arm (losers included).
+eval-sweep:
+	uv run python -m eval.harness.sweep
 
 # Sweeps the abstention threshold. Retrieval-side only: zero Gemini calls.
 eval-calibrate:

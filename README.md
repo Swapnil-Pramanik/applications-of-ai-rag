@@ -31,6 +31,10 @@ What the table says, honestly:
 - **Multi-hop questions are the weak spot (0.167)**, and that is structural: they need two
   passages from two different papers in the same top 5, and every retriever here scores chunks
   independently. Fixing it needs query decomposition or diversity-aware retrieval — out of scope.
+- **Chunking was chosen from data, not by default.** `make eval-sweep` tried 400/600/1000/1500
+  characters at 15% overlap, then 0%/15%/30% overlap at the winning size
+  (`eval/results/chunk-sweep.md`). 600/90 tied 1000/150 on Recall@5 (0.567) and won on nDCG@10
+  (0.539 vs 0.487); dropping overlap to 0 cost 15 points of Recall@5. Losing arms are committed too.
 - Abstention threshold `-2.0` was selected by `make eval-calibrate`
   (`eval/results/abstention-calibration.md`). The catch rate is **not quotable yet**: the 40
   adversarial questions still await human verification.
@@ -48,6 +52,7 @@ What the table says, honestly:
 | Abstention gate on reranker scores | Done | `app/retrieval/confidence.py` |
 | Gemini answers with per-claim citations | Done | `app/generation/` |
 | Evaluation harness (Recall@k, MRR, nDCG, per-type) | Done | `eval/harness/` |
+| Chunk size / overlap sweep (six arms, losers recorded) | Done | `eval/harness/sweep.py` |
 | Streamlit demo: examples, retriever switch, cited answer, top-5 passages with gate marks | Done | `ui/` |
 | Polished presentation UI | Planned (if time) | — |
 | Verified abstention rate (40 adversarial Qs) | Planned | `eval/golden_set/adversarial.jsonl` |
@@ -117,6 +122,7 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 │   │   ├── metrics.py         # Recall@k, MRR, nDCG
 │   │   ├── corpus_index.py    # ingests the corpus (cached) and builds each retriever
 │   │   ├── runner.py          # `python -m eval.harness.runner --strategy ...`
+│   │   ├── sweep.py           # chunk size / overlap sweep -> results/chunk-sweep.md
 │   │   ├── calibrate.py       # abstention-threshold sweep (no Gemini calls)
 │   │   └── validate_golden.py # checks every span really occurs on its page
 │   └── results/               # committed JSON / markdown results
@@ -217,5 +223,6 @@ make demo               # Streamlit demo at http://localhost:8501 (first load ~2
 make test               # unit + integration tests, 70% coverage gate
 make eval               # headline Recall@k for hybrid+rerank
 make eval-ablation      # all six retrievers
+make eval-sweep         # chunk size / overlap sweep (re-ingests the corpus 6x, slow)
 make eval-calibrate     # abstention threshold sweep (no API calls)
 ```
