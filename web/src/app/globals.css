@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Light, high-contrast palette chosen for projectors; dark mode follows the OS. */
+:root {
+  --paper: #f7f5f0;
+  --card: #ffffff;
+  --ink: #1b1d22;
+  --muted: #5f6470;
+  --line: #e3dfd6;
+  --accent: #3b4fd8;
+  --accent-soft: #e9ecfd;
+  --good: #1f7a4d;
+  --good-soft: #e3f3ea;
+  --warn: #9a5b00;
+  --warn-soft: #fdf1dc;
+  --bad: #b42335;
+  --bad-soft: #fbe6e9;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #14161b;
+    --card: #1c1f26;
+    --ink: #eceef2;
+    --muted: #9aa0ad;
+    --line: #2d313b;
+    --accent: #8b9bff;
+    --accent-soft: #252b4a;
+    --good: #5fd39a;
+    --good-soft: #17322a;
+    --warn: #f0b44c;
+    --warn-soft: #382a12;
+    --bad: #ff7a8a;
+    --bad-soft: #3a1c22;
+  }
+}
+
+@theme inline {
+  --color-paper: var(--paper);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-accent: var(--accent);
+  --color-accent-soft: var(--accent-soft);
+  --color-good: var(--good);
+  --color-good-soft: var(--good-soft);
+  --color-warn: var(--warn);
+  --color-warn-soft: var(--warn-soft);
+  --color-bad: var(--bad);
+  --color-bad-soft: var(--bad-soft);
+  --font-sans: var(--font-inter);
+  --font-serif: var(--font-newsreader);
+}
+
+body {
+  background: var(--paper);
+  color: var(--ink);
+}
+
+@keyframes rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: none; }
+}
+.rise { animation: rise 0.35s ease-out both; }

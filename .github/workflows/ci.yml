@@ -36,3 +36,20 @@ jobs:
       # fails for exactly the same reason `make test` does locally.
       - name: Test (pytest, coverage gate)
         run: uv run pytest --cov=app --cov=eval --cov=ui --cov=api --cov-report=term-missing
+
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npx tsc --noEmit
+      - run: npm run build

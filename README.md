@@ -57,7 +57,7 @@ What the table says, honestly:
 | Streamlit demo: examples, retriever switch, cited answer, top-5 passages with gate marks | Done | `ui/` |
 | JSON API: `/api/query`, `/api/upload` (your own PDF/DOCX/TXT/MD), `/api/meta`, `/api/health` | Done | `api/` |
 | Upload-your-own-document (in memory; never changes the eval corpus) | Done | `ui/service.py` `DemoService.add_document` |
-| Next.js presentation UI | In progress | `web/` |
+| Next.js presentation UI: live 5-step pipeline strip, hoverable citations, score-vs-gate bars, upload, corpus list, mobile + dark mode | Done | `web/` |
 | Verified abstention rate (40 adversarial Qs) | Planned | `eval/golden_set/adversarial.jsonl` |
 
 ## Architecture
@@ -80,7 +80,11 @@ What the table says, honestly:
  eval/harness:  golden questions ─▶ same retrieval code ─▶ Recall@k / MRR / nDCG ─▶ eval/results/
  ui/:           streamlit_app.py (draws) ─▶ service.py (decides) ─▶ QueryPipeline
  api/:          FastAPI routes ─▶ schemas.to_response ─▶ the same ui/service.py DemoService
+ web/:          Next.js page (browser) ──HTTP JSON──▶ api/ (port 8000)
 ```
+
+Two front-ends, one brain: `ui/streamlit_app.py` (quick Python demo) and `web/` (presentation
+UI) both end in `DemoService.ask`, so neither can answer differently from what the eval measures.
 
 Layers talk only through small interfaces: every retriever implements
 `Retriever.retrieve(query, k) -> list[RetrievedChunk]` (`app/retrieval/base.py`), and chunk text is
@@ -136,13 +140,18 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 ├── ui/
 │   ├── service.py             # demo logic, no Streamlit: DemoService, examples, uploads
 │   └── streamlit_app.py       # the Streamlit page (drawing only; not `app.py`, see below)
+├── web/                       # Next.js 16 + TypeScript + Tailwind v4 presentation UI
+│   ├── src/app/               # layout.tsx (fonts), globals.css (colour tokens), page.tsx
+│   ├── src/lib/api.ts         # typed fetch client; types mirror api/schemas.py
+│   ├── src/components/        # AskApp, Pipeline, AnswerPanel, EvidencePanel
+│   └── README.md              # per-file table for the frontend
 ├── scripts/fetch_corpus.py    # downloads the 18 PDFs into data/papers/
 ├── tests/
 │   ├── unit/                  # fast, no model downloads
 │   ├── integration/           # real models / corpus; skipped when unavailable
 │   └── fixtures/
 ├── data/papers/               # PDFs (gitignored, re-downloadable)
-├── .github/workflows/ci.yml   # ruff, format, mypy, golden-set schema, pytest + coverage
+├── .github/workflows/ci.yml   # python: ruff, mypy, golden schema, pytest+cov; web: lint, tsc, build
 ├── Makefile
 ├── pyproject.toml / uv.lock
 └── .env.example
@@ -161,6 +170,7 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 | `ui/service.py` | Load corpus + models once, run a question through a chosen retriever, report the outcome | `DemoService.ask() -> DemoResult`, `EXAMPLES`, `numbered_claims` |
 | `ui/streamlit_app.py` | Render settings, examples, answer, sources, retrieved passages | Streamlit only, no logic |
 | `api/main.py` | HTTP wrapper over `DemoService`; validates strategy, file type (pdf/docx/txt/md) and size (20 MB) | `create_app(service=None)`, `app` |
+| `web/` (Next.js) | Draw the API's JSON: pipeline strip, answer + footnotes, evidence bars, upload. No answer logic | `AskApp`, `stagesFor`, `ask`, `upload` (see `web/README.md`) |
 | `api/schemas.py` | Turn a `DemoResult` into JSON the frontend only has to draw (titles, footnote numbers, gate marks) | `QueryRequest`, `QueryResponse`, `to_response` |
 
 ## Request flow
@@ -191,6 +201,13 @@ its threshold is a cross-encoder score and means nothing against cosine/BM25/RRF
 `DemoService.add_document`, which ingests it at the corpus's chunking, appends it under a lock and
 drops the cached retrievers so the next query sees it. Uploads live in memory only and are gone on
 restart. No auth, rate limiting or streaming: it is a local demo backend.
+
+**Web flow** (`make web`, port 3000): on load `AskApp` calls `GET /api/meta` for the retrievers,
+examples and corpus. Asking calls `POST /api/query` straight from the browser (CORS allows
+`localhost:3000`; no Next.js proxy, so a slow Gemini call cannot hit a proxy timeout). While it
+waits, all pipeline steps pulse; on the response `stagesFor(strategy, generate, result)` marks each
+step done, skipped (e.g. no Fuse for BM25-only, no Rerank/Gate without `+rerank`), stopped at the
+gate, or refused/errored at Answer. Uploads go to `POST /api/upload`, then meta is refetched.
 
 The page is `ui/streamlit_app.py`, not `ui/app.py`: Streamlit adds `ui/` to the import path, and a
 file named `app.py` there would shadow the `app` package.
@@ -233,7 +250,8 @@ No database. Everything runs in memory on a laptop; both models are small and CP
 
 Runtime: `sentence-transformers`, `faiss-cpu`, `rank-bm25`, `pymupdf`, `python-docx`,
 `google-genai`, `pydantic-settings`, `structlog`, `streamlit`, `fastapi`, `uvicorn`,
-`python-multipart`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `httpx`,
+`python-multipart`. Frontend (`web/package.json`): `next` 16, `react` 19, `tailwindcss` 4,
+`typescript`, `eslint`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `httpx`,
 `ruff`, `mypy`. Managed with `uv` (Python 3.11).
 
 ## Configuration
@@ -243,6 +261,9 @@ gitignored. Every other setting (chunk size/overlap, `top_k`, `candidate_k`, `rr
 `confidence_threshold`, model names) has a default in `app/core/config.py` and can be overridden
 by an environment variable of the same name in upper case.
 
+Frontend: `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). It is public by design and must
+never hold a secret; the Gemini key stays in the API's `.env`.
+
 ## Running it
 
 ```bash
@@ -250,6 +271,7 @@ uv sync                 # install
 make corpus             # download the 18 PDFs (once)
 make demo               # Streamlit demo at http://localhost:8501 (first load ~20-30s)
 make api                # JSON API at http://localhost:8000 (docs at /docs)
+make web                # Next.js UI at http://localhost:3000 (run alongside `make api`)
 make test               # unit + integration tests, 70% coverage gate
 make eval               # headline Recall@k for hybrid+rerank
 make eval-ablation      # all six retrievers
