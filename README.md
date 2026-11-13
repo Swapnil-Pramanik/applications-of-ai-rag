@@ -151,7 +151,7 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 │   ├── integration/           # real models / corpus; skipped when unavailable
 │   └── fixtures/
 ├── data/papers/               # PDFs (gitignored, re-downloadable)
-├── .github/workflows/ci.yml   # python: ruff, mypy, golden schema, pytest+cov; web: lint, tsc, build
+├── .github/workflows/ci.yml   # python: ruff, mypy, golden schema, pytest+cov; web: lint, build
 ├── Makefile
 ├── pyproject.toml / uv.lock
 └── .env.example
