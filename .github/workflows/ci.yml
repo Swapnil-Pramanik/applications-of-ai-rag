@@ -27,7 +27,7 @@ jobs:
         run: uv run ruff format --check .
 
       - name: Type check (mypy)
-        run: uv run mypy app eval scripts
+        run: uv run mypy app eval scripts ui
 
       - name: Validate golden set (schema only — CI has no corpus PDFs)
         run: uv run python -m eval.harness.validate_golden --schema-only
@@ -35,4 +35,4 @@ jobs:
       # Coverage gate (fail_under = 70) lives in pyproject.toml, so this step
       # fails for exactly the same reason `make test` does locally.
       - name: Test (pytest, coverage gate)
-        run: uv run pytest --cov=app --cov=eval --cov-report=term-missing
+        run: uv run pytest --cov=app --cov=eval --cov=ui --cov-report=term-missing

@@ -1,10 +1,15 @@
-.PHONY: setup test lint format typecheck corpus validate-golden eval eval-ablation eval-calibrate
+.PHONY: setup demo test lint format typecheck corpus validate-golden eval eval-ablation eval-calibrate
 
 setup:
 	uv sync
 
+# Streamlit demo on http://localhost:8501. `python -m` puts the repo root on
+# the import path so `app`, `eval` and `ui` import normally.
+demo:
+	uv run python -m streamlit run ui/streamlit_app.py
+
 test:
-	uv run pytest --cov=app --cov=eval --cov-report=term-missing
+	uv run pytest --cov=app --cov=eval --cov=ui --cov-report=term-missing
 
 lint:
 	uv run ruff check .
@@ -13,7 +18,7 @@ format:
 	uv run ruff format .
 
 typecheck:
-	uv run mypy app eval scripts
+	uv run mypy app eval scripts ui
 
 # Downloads the 18 arXiv PDFs into data/papers/ (skip if already present).
 corpus:

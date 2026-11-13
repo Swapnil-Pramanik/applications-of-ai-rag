@@ -11,6 +11,7 @@ dependencies = [
     "python-docx>=1.2.0",
     "rank-bm25>=0.2.2",
     "sentence-transformers>=3.0",
+    "streamlit>=1.67.0",
     "structlog>=26.1.0",
 ]
 
@@ -43,7 +44,9 @@ testpaths = ["tests"]
 
 [tool.coverage.run]
 # The eval harness is a deliverable, not a script — it is held to the same gate as app/.
-source = ["app", "eval"]
+source = ["app", "eval", "ui"]
+# The Streamlit page only draws; its logic is in ui/service.py, which is covered.
+omit = ["ui/streamlit_app.py"]
 
 [tool.coverage.report]
 # The one number in Section 2 that stays a hard target rather than a reference

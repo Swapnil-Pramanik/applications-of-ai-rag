@@ -48,8 +48,8 @@ What the table says, honestly:
 | Abstention gate on reranker scores | Done | `app/retrieval/confidence.py` |
 | Gemini answers with per-claim citations | Done | `app/generation/` |
 | Evaluation harness (Recall@k, MRR, nDCG, per-type) | Done | `eval/harness/` |
-| Command-line "ask a question" demo | Planned | `scripts/ask.py` |
-| Streamlit demo UI | Planned | `ui/` |
+| Streamlit demo: examples, retriever switch, cited answer, top-5 passages with gate marks | Done | `ui/` |
+| Polished presentation UI | Planned (if time) | — |
 | Verified abstention rate (40 adversarial Qs) | Planned | `eval/golden_set/adversarial.jsonl` |
 
 ## Architecture
@@ -70,6 +70,7 @@ What the table says, honestly:
                        app/generation/citations.py maps numbers ─▶ paper + page + quote
 
  eval/harness:  golden questions ─▶ same retrieval code ─▶ Recall@k / MRR / nDCG ─▶ eval/results/
+ ui/:           streamlit_app.py (draws) ─▶ service.py (decides) ─▶ QueryPipeline
 ```
 
 Layers talk only through small interfaces: every retriever implements
@@ -119,6 +120,9 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 │   │   ├── calibrate.py       # abstention-threshold sweep (no Gemini calls)
 │   │   └── validate_golden.py # checks every span really occurs on its page
 │   └── results/               # committed JSON / markdown results
+├── ui/
+│   ├── service.py             # demo logic, no Streamlit: DemoService, examples, labels
+│   └── streamlit_app.py       # the Streamlit page (drawing only; not `app.py`, see below)
 ├── scripts/fetch_corpus.py    # downloads the 18 PDFs into data/papers/
 ├── tests/
 │   ├── unit/                  # fast, no model downloads
@@ -141,6 +145,8 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
 | `app/generation` | Ask Gemini for a structured, cited answer and verify its citations | `generate_answer`, `GeminiClient`, `assemble`, `Answer` |
 | `app/pipeline.py` | One question end to end | `QueryPipeline.answer() -> AnswerResult` |
 | `eval/harness` | Measure retrieval and calibrate the gate | `load_corpus`, `EvalCorpus.build_retriever`, `run`, `sweep` |
+| `ui/service.py` | Load corpus + models once, run a question through a chosen retriever, report the outcome | `DemoService.ask() -> DemoResult`, `EXAMPLES`, `numbered_claims` |
+| `ui/streamlit_app.py` | Render settings, examples, answer, sources, retrieved passages | Streamlit only, no logic |
 
 ## Request flow
 
@@ -156,6 +162,16 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
      left uncited.
 4. A Gemini outage (429/503) raises `GenerationUnavailableError` — never counted as an abstention.
 
+**Demo flow** (`make demo`): `get_service()` (cached with `st.cache_resource`) calls
+`load_service()` once. Each question goes through `DemoService.ask(question, strategy, generate)`,
+which returns a `DemoResult` with one of five statuses: `answered`, `refused_by_gate`,
+`refused_by_model`, `retrieval_only` (generation toggled off, uses no quota) or `error` (Gemini
+outage; retrieval is still shown). The confidence gate only runs for `+rerank` retrievers, because
+its threshold is a cross-encoder score and means nothing against cosine/BM25/RRF scores.
+
+The page is `ui/streamlit_app.py`, not `ui/app.py`: Streamlit adds `ui/` to the import path, and a
+file named `app.py` there would shadow the `app` package.
+
 ## Key data models
 
 - `RetrievedChunk` — `vector_id, text, score, page_number, chunk_index, source_filename`.
@@ -164,7 +180,10 @@ ingestion code the app uses, so the measured numbers describe the real pipeline.
   by span text, not chunk id, so one label set grades every chunking fairly.
 - `Answer` → `claims[]` → `Citation(source_filename, page_number, chunk_index, quote)`;
   an unanswered `Answer` carries `abstain_reason`.
-- `AnswerResult` — `answer`, `gate: GateDecision`, `abstain_source` (`gate` / `model` / `None`).
+- `AnswerResult` — `answer`, `gate: GateDecision`, `retrieved` (all top-k chunks, including ones
+  the gate dropped), `abstain_source` (`gate` / `model` / `None`).
+- `DemoResult` (`ui/service.py`) — `question, strategy, retrieved, gate | None, answer | None,
+  error | None, seconds`, plus `status` and `passed_gate(chunk)`.
 
 ## External services and data
 
@@ -179,7 +198,7 @@ No database. Everything runs in memory on a laptop; both models are small and CP
 ## Dependencies
 
 Runtime: `sentence-transformers`, `faiss-cpu`, `rank-bm25`, `pymupdf`, `python-docx`,
-`google-genai`, `pydantic-settings`, `structlog`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`,
+`google-genai`, `pydantic-settings`, `structlog`, `streamlit`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`,
 `ruff`, `mypy`. Managed with `uv` (Python 3.11).
 
 ## Configuration
@@ -194,6 +213,7 @@ by an environment variable of the same name in upper case.
 ```bash
 uv sync                 # install
 make corpus             # download the 18 PDFs (once)
+make demo               # Streamlit demo at http://localhost:8501 (first load ~20-30s)
 make test               # unit + integration tests, 70% coverage gate
 make eval               # headline Recall@k for hybrid+rerank
 make eval-ablation      # all six retrievers
