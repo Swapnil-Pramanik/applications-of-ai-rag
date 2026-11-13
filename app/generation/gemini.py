@@ -145,6 +145,10 @@ def generate_answer(
     re-sorts, because `assemble` resolves ids positionally and a reorder would
     silently repoint every citation.
     """
-    client = client or GeminiClient()
+    if client is None:
+        # Imported here: `llm` imports this module, so a top-level import would cycle.
+        from app.generation.llm import answer_client
+
+        client = answer_client()
     model_answer = client.generate(build_prompt(question, chunks))
     return assemble(model_answer, chunks)

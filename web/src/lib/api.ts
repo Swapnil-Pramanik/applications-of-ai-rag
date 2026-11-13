@@ -64,6 +64,7 @@ export interface Source {
 }
 
 export interface Meta {
+  llm: string;
   strategies: { key: string; label: string }[];
   gate_threshold: number;
   max_upload_mb: number;

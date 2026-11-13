@@ -121,6 +121,7 @@ class StrategyOut(BaseModel):
 
 
 class MetaResponse(BaseModel):
+    llm: str
     strategies: list[StrategyOut]
     gate_threshold: float
     max_upload_mb: int

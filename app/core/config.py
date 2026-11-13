@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from pydantic import field_validator
+from pydantic import AliasChoices, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -58,6 +58,23 @@ class Settings(BaseSettings):
     gemini_temperature: float = 0.0
     gemini_max_output_tokens: int = 1024
 
+    # Which hosted LLM answers questions and writes source guides. "groq" runs
+    # the open-weight gpt-oss-120b on Groq's free tier (~1,000 requests/day);
+    # "gemini" is the original provider (free tier: 20 requests/day). Retrieval,
+    # the gate and every benchmark number are identical under both.
+    llm_provider: str = "groq"
+    # Accepts GROQ_API_KEY (conventional) or GROQ_KEY.
+    groq_api_key: str = Field(default="", validation_alias=AliasChoices("GROQ_API_KEY", "GROQ_KEY"))
+    groq_model: str = "openai/gpt-oss-120b"
+    groq_timeout_seconds: float = 30.0
+    # Groq's free tier caps gpt-oss-120b at 8,000 tokens per minute, counting the
+    # prompt plus the reserved reply budget. A guide therefore reads only the
+    # first ~16k characters (~4-5k tokens), and replies are capped so one
+    # question costs ~2k tokens (3-4 questions a minute).
+    groq_guide_max_chars: int = 16_000
+    groq_answer_max_tokens: int = 1024
+    groq_guide_max_tokens: int = 1200
+
     # Upstream failure handling. The SDK retries 5xx with backoff by default,
     # and left unbounded that turned a single 503 into a 128s hang in a Day 10
     # measurement — worse for a user than failing fast. Two attempts inside a
@@ -88,6 +105,13 @@ class Settings(BaseSettings):
     # whole answer and the service abstains. Strict on purpose: an uncited
     # claim is exactly the failure mode this project promises not to ship.
     require_citation_per_claim: bool = True
+
+    @field_validator("llm_provider")
+    @classmethod
+    def _known_provider(cls, v: str) -> str:
+        if v not in ("groq", "gemini"):
+            raise ValueError(f"llm_provider must be 'groq' or 'gemini', got {v!r}")
+        return v
 
     @field_validator("gemini_thinking_level")
     @classmethod

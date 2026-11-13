@@ -22,7 +22,7 @@ function GuideBadge({ source }: { source: Source }) {
   if (source.guide_status === "failed")
     return (
       <span className="text-xs text-warn" title={source.guide_error ?? undefined}>
-        no guide (Gemini unavailable)
+        no guide (LLM unavailable)
       </span>
     );
   return null;

@@ -147,12 +147,12 @@ def paper_title(source_filename: str) -> str:
 
 def explain_outage(error: GenerationUnavailableError) -> str:
     if error.status_code == 429:
-        return "Gemini's free-tier quota is used up for now. Showing retrieval only."
+        return "The LLM's free-tier quota is used up for now. Showing retrieval only."
     if error.status_code == 503:
         return (
-            "Gemini is overloaded right now (503). Try again in a minute. Showing retrieval only."
+            "The LLM is overloaded right now (503). Try again in a minute. Showing retrieval only."
         )
-    return f"Gemini could not be reached ({error}). Showing retrieval only."
+    return f"The LLM could not be reached ({error}). Showing retrieval only."
 
 
 class DemoService:

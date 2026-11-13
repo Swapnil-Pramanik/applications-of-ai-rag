@@ -20,7 +20,7 @@ export default function Evidence({ result }: { result: QueryResponse }) {
     <div>
       <p className="text-xs text-muted">
         {gate
-          ? `Cross-encoder scores. The black tick is the gate (${gate.threshold.toFixed(1)}); passages below it are never shown to Gemini.`
+          ? `Cross-encoder scores. The black tick is the gate (${gate.threshold.toFixed(1)}); passages below it are never shown to the LLM.`
           : `${result.strategy_label}: these scores are not cross-encoder scores, so the gate is off.`}
       </p>
       <ol className="mt-2 space-y-1.5">

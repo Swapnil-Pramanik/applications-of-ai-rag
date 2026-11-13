@@ -54,7 +54,7 @@ export function stagesFor(
     { name: "Fuse", detail: "Reciprocal Rank Fusion merges the two lists", state: ran(base === "hybrid") },
     { name: "Rerank", detail: "A cross-encoder rescores and keeps the top 5", state: ran(reranked) },
     { name: "Gate", detail: "Refuse if no passage scores above the threshold", state: gate, note: gateNote },
-    { name: "Answer", detail: "Gemini answers from the passages and cites each claim", state: answer, note: answerNote },
+    { name: "Answer", detail: "The LLM answers from the passages and cites each claim", state: answer, note: answerNote },
   ];
 }
 

@@ -39,20 +39,20 @@ function Body({ result, onCite }: { result: QueryResponse; onCite: (c: Citation)
       <Banner tone="warn" title="Refused before calling the LLM">
         Nothing in the selected sources looked relevant: the best passage scored{" "}
         <strong>{gate.top_score?.toFixed(2)}</strong>, below the gate of{" "}
-        <strong>{gate.threshold.toFixed(1)}</strong>. Gemini was never asked, so it could not guess.
+        <strong>{gate.threshold.toFixed(1)}</strong>. The LLM was never asked, so it could not guess.
       </Banner>
     );
   }
   if (status === "refused_by_model") {
     return (
       <Banner tone="warn" title="The sources don't answer this">
-        Gemini read the top passages and judged them insufficient: {result.abstain_reason}
+        The LLM read the top passages and judged them insufficient: {result.abstain_reason}
       </Banner>
     );
   }
   if (status === "error") {
     return (
-      <Banner tone="bad" title="Gemini is unavailable">
+      <Banner tone="bad" title="The LLM is unavailable">
         {result.error} An outage is an error, never counted as a refusal.
       </Banner>
     );
@@ -60,7 +60,7 @@ function Body({ result, onCite }: { result: QueryResponse; onCite: (c: Citation)
   if (status === "retrieval_only") {
     return (
       <Banner tone="info" title="Generation is off">
-        Showing only what retrieval found (no Gemini quota used). Open the evidence below.
+        Showing only what retrieval found (no LLM quota used). Open the evidence below.
       </Banner>
     );
   }
@@ -122,7 +122,7 @@ export default function ChatTurn({ turn, onCite }: { turn: Turn; onCite: (c: Cit
           {running && (
             <p className="animate-pulse text-sm text-muted">
               Searching {turn.sourceCount} source{turn.sourceCount === 1 ? "" : "s"}
-              {turn.generate ? " and asking Gemini…" : "…"}
+              {turn.generate ? " and asking the LLM…" : "…"}
             </p>
           )}
           {turn.error && <Banner tone="bad" title="Request failed">{turn.error}</Banner>}

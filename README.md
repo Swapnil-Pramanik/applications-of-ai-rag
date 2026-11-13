@@ -3,15 +3,16 @@
 **A NotebookLM-style notebook that answers only from your own documents.** Upload PDFs, Word files
 or notes, tick which sources to use, and ask questions. Every claim cites a source, page and
 passage, and when your sources don't contain the answer the notebook **refuses instead of
-guessing**. For each upload, Gemini writes a short guide and five case-study questions (fact,
+guessing**. For each upload, the LLM writes a short guide and five case-study questions (fact,
 comparison, multi-hop, off-topic, not-in-document) that show each behaviour live on *that* file.
 
 Built as a semester project for *Applications of AI*. Under the hood it is a retrieval-augmented
 generation (RAG) pipeline: hybrid retrieval (BGE + FAISS dense, BM25 sparse, Reciprocal Rank
-Fusion), a cross-encoder reranker, a confidence gate, and Gemini for cited answers.
+Fusion), a cross-encoder reranker, a confidence gate, and a hosted LLM for cited answers:
+**`gpt-oss-120b` on Groq** by default (open-weight, free tier), or Gemini (`LLM_PROVIDER=gemini`).
 
 **Nothing is trained or fine-tuned.** All three models (BGE embeddings, the MiniLM cross-encoder,
-Gemini) are used as-is. The 18 ML papers in `data/papers/` are not training data: they are the
+the LLM) are used as-is. The 18 ML papers in `data/papers/` are not training data: they are the
 **benchmark** the pipeline is measured on (60 hand-verified questions, below). The notebook app
 never shows them; it only answers from what you upload.
 
@@ -59,7 +60,7 @@ What the table says, honestly:
 | Per-source guide: summary + 4 LLM-written case-study questions (+ fixed off-topic one) | Done | `app/generation/guide.py`, `api/notebook.py` |
 | Five-step pipeline strip per answer (Retrieve → Fuse → Rerank → Gate → Answer) | Done | `web/src/components/Pipeline.tsx` |
 | Clickable citations, evidence list with score-vs-gate bars | Done | `web/src/components/ChatTurn.tsx`, `Evidence.tsx` |
-| "Answer with Gemini" off switch: retrieval only, no API quota | Done | `web/`, `DemoService.ask(generate=False)` |
+| "Answer with the LLM" off switch: retrieval only, no API quota | Done | `web/`, `DemoService.ask(generate=False)` |
 | PDF / DOCX / TXT / MD parsing with page numbers | Done | `app/ingestion/parsers.py` |
 | Recursive chunking (600 chars, 90 overlap) | Done | `app/ingestion/chunker.py` |
 | Dense retrieval — `bge-small-en-v1.5` + FAISS | Done | `app/ingestion/embedder.py`, `app/retrieval/dense.py` |
@@ -67,7 +68,7 @@ What the table says, honestly:
 | Hybrid fusion — Reciprocal Rank Fusion | Done | `app/retrieval/fusion.py` |
 | Cross-encoder reranking | Done | `app/retrieval/reranker.py` |
 | Abstention gate on reranker scores | Done | `app/retrieval/confidence.py` |
-| Gemini answers with per-claim citations | Done | `app/generation/` |
+| LLM answers with per-claim citations; provider switch Groq (gpt-oss-120b) / Gemini | Done | `app/generation/`, `llm.py` |
 | Evaluation harness (Recall@k, MRR, nDCG, per-type) on the 18-paper benchmark | Done | `eval/harness/` |
 | Chunk size / overlap sweep (six arms, losers recorded) | Done | `eval/harness/sweep.py` |
 | Streamlit demo over the 18-paper benchmark corpus | Done | `ui/streamlit_app.py` |
@@ -86,13 +87,13 @@ What the table says, honestly:
                                           confidence gate ──▶ abstain (no LLM call)
                                                    │
                                                    ▼
-                              Gemini (structured JSON, cites source numbers)
+                 LLM: Groq gpt-oss-120b or Gemini (structured JSON, cites source numbers)
                                                    │
                        app/generation/citations.py maps numbers ─▶ file + page + quote
 
  web/ (Next.js, browser) ──HTTP JSON──▶ api/main.py ─▶ api/notebook.py NotebookService
                                                          ├─ ui/service.py DemoService (the pipeline above)
-                                                         └─ app/generation/guide.py (1 Gemini call per upload)
+                                                         └─ app/generation/guide.py (1 LLM call per upload)
  ui/streamlit_app.py ─▶ ui/service.py DemoService over the 18 benchmark papers
  eval/harness:  golden questions ─▶ same retrieval code ─▶ Recall@k / MRR / nDCG ─▶ eval/results/
 ```
@@ -131,7 +132,9 @@ looked up through the `ChunkStore` protocol.
 │   │   ├── prompts.py         # system instruction + numbered sources
 │   │   ├── schema.py          # Pydantic model output + Answer/Claim/Citation
 │   │   ├── gemini.py          # Gemini client, timeouts, outage error
-│   │   ├── guide.py           # per-upload summary + case-study questions (one Gemini call)
+│   │   ├── groq.py            # Groq client (gpt-oss-120b): answers + guides over plain HTTP
+│   │   ├── llm.py             # picks the provider from LLM_PROVIDER; model label for the UI
+│   │   ├── guide.py           # per-upload summary + case-study questions (one LLM call)
 │   │   └── citations.py       # resolve cited numbers back to real chunks
 │   └── pipeline.py            # QueryPipeline: retrieve -> gate -> generate
 ├── api/
@@ -158,7 +161,7 @@ looked up through the `ChunkStore` protocol.
 │   │   ├── corpus_index.py    # EvalCorpus: ingest (cached), subset/empty, build each retriever
 │   │   ├── runner.py          # `python -m eval.harness.runner --strategy ...`
 │   │   ├── sweep.py           # chunk size / overlap sweep -> results/chunk-sweep.md
-│   │   ├── calibrate.py       # abstention-threshold sweep (no Gemini calls)
+│   │   ├── calibrate.py       # abstention-threshold sweep (no LLM calls)
 │   │   └── validate_golden.py # checks every span really occurs on its page
 │   └── results/               # committed JSON / markdown results
 ├── scripts/fetch_corpus.py    # downloads the 18 benchmark PDFs into data/papers/
@@ -180,7 +183,7 @@ looked up through the `ChunkStore` protocol.
 | `app/core` | Configuration and the benchmark corpus list | `Settings`, `settings`, `CORPUS` |
 | `app/ingestion` | Turn files into embedded chunks and indexes | `parse_document`, `chunk_pages`, `Embedder`, `build_index`, `ingest_document` |
 | `app/retrieval` | Rank chunks for a question; decide whether the evidence is good enough | `DenseRetriever`, `SparseRetriever`, `HybridRetriever`, `RerankingRetriever`, `ConfidenceGate` |
-| `app/generation` | Cited answers from Gemini (and verify citations); per-upload guides | `generate_answer`, `GeminiClient`, `assemble`, `Answer`, `GeminiGuideClient`, `SourceGuide` |
+| `app/generation` | Cited answers from the configured LLM (and verify citations); per-upload guides | `generate_answer`, `answer_client`, `guide_client`, `GroqClient`, `GeminiClient`, `assemble`, `Answer`, `SourceGuide` |
 | `app/pipeline.py` | One question end to end | `QueryPipeline.answer() -> AnswerResult` |
 | `eval/harness` | Measure retrieval and calibrate the gate; `EvalCorpus` also holds the notebook's chunks | `load_corpus`, `EvalCorpus.empty/subset/build_retriever`, `run`, `sweep` |
 | `ui/service.py` | Hold a corpus + models, add/remove documents, build retrievers per (strategy, selected sources), run a question | `DemoService.ask(..., sources) -> DemoResult`, `add_document`, `remove_document`, `NoSourcesError` |
@@ -199,23 +202,24 @@ looked up through the `ChunkStore` protocol.
 2. **Add source** — `POST /api/sources` (multipart `file`): written to a temp dir,
    `DemoService.add_document` parses → chunks (600/90) → embeds it and appends it under a lock,
    dropping cached retrievers. The response returns at once with `guide_status: "pending"`.
-3. **Guide** — on a background thread, `GeminiGuideClient.generate_guide` reads the first 60k
-   characters and returns a summary plus fact / comparison / multi-hop / not-in-document questions.
-   The browser polls `GET /api/sources` every 2 s until no guide is pending. If Gemini is down or
+3. **Guide** — on a background thread, `guide_client().generate_guide` reads the start of the
+   document (first 16k characters on Groq, 60k on Gemini) and returns a summary plus fact /
+   comparison / multi-hop / not-in-document questions, so case studies come from the opening pages.
+   The browser polls `GET /api/sources` every 2 s until no guide is pending. If the LLM is down or
    out of quota, the guide is `failed` and the source still works (only the off-topic case shows).
 4. **Ask** — `POST /api/query {question, strategy, generate, sources}`.
    `DemoService.retriever(strategy, sources)` builds (and caches) a FAISS + BM25 index over *only*
    the selected files, then `QueryPipeline`:
    - retrieves the top 5 reranked chunks;
    - **gate**: if the best cross-encoder score is below `confidence_threshold` (−2.0) → refuse
-     (`refused_by_gate`), no Gemini call;
-   - otherwise Gemini returns JSON claims citing source *numbers*; `citations.py` maps them to real
+     (`refused_by_gate`), no LLM call;
+   - otherwise the LLM returns JSON claims (same prompt and schema for both providers) citing source *numbers*; `citations.py` maps them to real
      chunks, drops invented ones, and refuses (`refused_by_model`) if a claim is left uncited.
-   - A Gemini outage (429/503) is `error`, never counted as a refusal; retrieval is still shown.
+   - An LLM outage (413/429/503/timeout) is `error`, never counted as a refusal; retrieval is still shown.
 5. The browser draws the turn: pipeline strip (`stagesFor` marks each step done / skipped /
    stopped), claims with citation chips (click → citation panel), and the evidence list.
 
-Statuses: `answered`, `refused_by_gate`, `refused_by_model`, `retrieval_only` (Gemini switched off),
+Statuses: `answered`, `refused_by_gate`, `refused_by_model`, `retrieval_only` (LLM switched off),
 `error`. The gate only runs for `+rerank` retrievers: its threshold is a cross-encoder score and
 means nothing against cosine/BM25/RRF scores.
 
@@ -249,7 +253,8 @@ means nothing against cosine/BM25/RRF scores.
 
 | Service | Used for | Cost |
 |---|---|---|
-| Google Gemini (`gemini-3.6-flash`, thinking LOW) | cited answers (1 call per question) and source guides (1 call per upload) | **free tier: 20 requests/day** for this model, plus 429/503s under load. Plan the demo around it |
+| **Groq** (`openai/gpt-oss-120b`, reasoning effort low) — default | cited answers (1 call per question) and source guides (1 call per upload) | free tier: ~1,000 requests/day, 30/min, **8,000 tokens/min** and 200k tokens/day. A question costs ~2k tokens, so ~3–4 questions a minute |
+| Google Gemini (`gemini-3.6-flash`, thinking LOW) — `LLM_PROVIDER=gemini` | same | free tier: **20 requests/day**, plus 429/503s under load |
 | Hugging Face Hub | one-time download of `BAAI/bge-small-en-v1.5` and `cross-encoder/ms-marco-MiniLM-L-6-v2` | free |
 | arXiv | one-time download of the 18 benchmark PDFs (`make corpus`) | free |
 
@@ -259,7 +264,7 @@ Uploaded sources and their guides live in memory and are gone when the API resta
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/health` | GET | liveness, source and chunk counts |
-| `/api/meta` | GET | retrievers, gate threshold, max upload size |
+| `/api/meta` | GET | LLM label, retrievers, gate threshold, max upload size |
 | `/api/sources` | GET | sources in upload order with guide status, summary, case studies |
 | `/api/sources` | POST | multipart `file` (.pdf/.docx/.txt/.md, ≤20 MB) → `SourceOut` (guide pending) |
 | `/api/sources/{filename}` | DELETE | remove a source (204; 404 if unknown) |
@@ -273,20 +278,22 @@ would shift the measured benchmark numbers.
 ## Dependencies
 
 Runtime: `sentence-transformers`, `faiss-cpu`, `rank-bm25`, `pymupdf`, `python-docx`,
-`google-genai`, `pydantic-settings`, `structlog`, `streamlit`, `fastapi`, `uvicorn`,
-`python-multipart`. Frontend (`web/package.json`): `next` 16, `react` 19, `tailwindcss` 4,
+`google-genai`, `httpx` (Groq calls), `pydantic-settings`, `structlog`, `streamlit`, `fastapi`,
+`uvicorn`, `python-multipart`. Frontend (`web/package.json`): `next` 16, `react` 19, `tailwindcss` 4,
 `typescript`, `eslint`. Dev: `pytest`, `pytest-asyncio`, `pytest-cov`, `httpx`, `ruff`, `mypy`.
 Managed with `uv` (Python 3.11) and `npm` (Node 22+).
 
 ## Configuration
 
-Copy `.env.example` to `.env` and set `GEMINI_API_KEY`. That is the only secret; `.env` is
-gitignored. Every other setting (chunk size/overlap, `top_k`, `candidate_k`, `rrf_k`,
+Copy `.env.example` to `.env` and set `GROQ_API_KEY` (or `GROQ_KEY`). `LLM_PROVIDER` picks the
+LLM (`groq`, the default, or `gemini`, which needs `GEMINI_API_KEY`). The API keys are the only
+secrets; `.env` is gitignored. Groq's free-tier budget knobs (`GROQ_GUIDE_MAX_CHARS`,
+`GROQ_ANSWER_MAX_TOKENS`, `GROQ_GUIDE_MAX_TOKENS`) are in `app/core/config.py`. Every other setting (chunk size/overlap, `top_k`, `candidate_k`, `rrf_k`,
 `confidence_threshold`, model names) has a default in `app/core/config.py` and can be overridden
 by an environment variable of the same name in upper case.
 
 Frontend: `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`). It is public by design and must
-never hold a secret; the Gemini key stays in the API's `.env`.
+never hold a secret; the LLM keys stay in the API's `.env`.
 
 ## Running it
 
@@ -304,8 +311,7 @@ make eval-sweep         # chunk size / overlap sweep (re-ingests the corpus 6x, 
 make eval-calibrate     # abstention threshold sweep (no API calls)
 ```
 
-**Demo tip:** the free tier allows ~20 Gemini calls a day (each upload's guide is one, each
-answered question is one). Upload your demo files before presenting and keep `make api` running: a
-restart clears them, and re-uploading spends a guide call each. Keep "Answer with Gemini" off while
-rehearsing and switch it on only for the questions you show. Gate refusals (e.g. the off-topic case)
-never use quota.
+**Demo tip:** on Groq (default) the binding limit is 8,000 tokens a minute, so ask at a talking
+pace (3–4 questions a minute); a 429 shows as an error, not a refusal, and clears within a minute.
+Upload demo files before presenting and keep `make api` running: a restart clears them. Gate
+refusals (e.g. the off-topic case) never call the LLM. On Gemini the limit is 20 calls a day.

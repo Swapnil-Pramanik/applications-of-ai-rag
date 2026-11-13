@@ -14,7 +14,8 @@ from pathlib import Path
 from typing import Literal
 
 from app.generation.gemini import GenerationUnavailableError
-from app.generation.guide import GeminiGuideClient, GuideClient, SourceGuide
+from app.generation.guide import GuideClient, SourceGuide
+from app.generation.llm import guide_client
 from app.ingestion.parsers import parse_document
 from ui.service import DemoResult, DemoService, UploadResult
 
@@ -49,7 +50,7 @@ class SourceInfo:
     def case_studies(self) -> list[CaseStudy]:
         g = self.guide.guide
         off_topic = CaseStudy(
-            "off_topic", "Off-topic", OFF_TOPIC_QUESTION, "The gate refuses before calling Gemini"
+            "off_topic", "Off-topic", OFF_TOPIC_QUESTION, "The gate refuses before calling the LLM"
         )
         if g is None:
             return [off_topic]
@@ -114,7 +115,7 @@ class NotebookService:
 
         def write_guide() -> None:
             try:
-                client = self._guide_client or GeminiGuideClient()
+                client = self._guide_client or guide_client()
                 state.guide = client.generate_guide(text)
                 state.status = "ready"
             except GenerationUnavailableError as error:

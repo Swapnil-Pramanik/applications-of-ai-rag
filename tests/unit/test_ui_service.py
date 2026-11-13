@@ -1,4 +1,4 @@
-"""The demo's decision logic, tested without Streamlit, models or Gemini.
+"""The demo's decision logic, tested without Streamlit, models or an LLM.
 
 Uses the BM25 arms so no embedding model is needed; the cross-encoder and the
 LLM are stubs that go in through the same parameters production uses.

@@ -30,6 +30,7 @@ from api.schemas import (
     to_response,
 )
 from app.core.config import settings
+from app.generation.llm import llm_label
 from app.ingestion.parsers import UnsupportedFormatError
 from eval.harness.corpus_index import EvalCorpus
 from ui.service import STRATEGY_LABELS, DemoService, NoSourcesError, UploadError
@@ -72,6 +73,7 @@ def create_app(notebook: NotebookService | None = None) -> FastAPI:
     @app.get("/api/meta", response_model=MetaResponse)
     def meta() -> MetaResponse:
         return MetaResponse(
+            llm=llm_label(),
             strategies=[StrategyOut(key=k, label=v) for k, v in STRATEGY_LABELS.items()],
             gate_threshold=settings.confidence_threshold,
             max_upload_mb=MAX_UPLOAD_MB,

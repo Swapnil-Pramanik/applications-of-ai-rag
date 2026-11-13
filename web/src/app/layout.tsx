@@ -8,7 +8,7 @@ const newsreader = Newsreader({ variable: "--font-newsreader", subsets: ["latin"
 export const metadata: Metadata = {
   title: "Grounded Notebook",
   description:
-    "Ask questions of your own documents: hybrid retrieval, reranking, an abstention gate and cited Gemini answers.",
+    "Ask questions of your own documents: hybrid retrieval, reranking, an abstention gate and cited LLM answers.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

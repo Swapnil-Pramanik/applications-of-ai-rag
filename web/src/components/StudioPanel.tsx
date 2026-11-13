@@ -47,7 +47,7 @@ export default function StudioPanel(props: Props) {
                 <div className="truncate text-xs font-semibold text-muted">{s.filename}</div>
                 <p className="mt-0.5 text-sm leading-relaxed">
                   {s.summary ??
-                    (s.guide_status === "pending" ? "Writing a summary…" : "No summary (Gemini was unavailable).")}
+                    (s.guide_status === "pending" ? "Writing a summary…" : "No summary (the LLM was unavailable).")}
                 </p>
               </li>
             ))}
@@ -57,6 +57,10 @@ export default function StudioPanel(props: Props) {
 
       <section>
         <h2 className="font-semibold">Settings</h2>
+        <p className="mt-2 text-sm">
+          <span className="text-muted">LLM</span>{" "}
+          <span className="font-medium">{meta?.llm ?? "…"}</span>
+        </p>
         <label className="mt-2 block text-sm">
           <span className="text-muted">Retriever</span>
           <select
@@ -76,7 +80,7 @@ export default function StudioPanel(props: Props) {
             type="button"
             role="switch"
             aria-checked={generate}
-            aria-label="Generate answers with Gemini"
+            aria-label="Generate answers with the LLM"
             onClick={() => props.onGenerate(!generate)}
             className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${generate ? "bg-accent" : "bg-line"}`}
           >
@@ -85,7 +89,7 @@ export default function StudioPanel(props: Props) {
             />
           </button>
           <span>
-            Answer with Gemini
+            Answer with the LLM
             <span className="block text-xs text-muted">
               {generate ? "Turn off to show retrieval only (no API quota)" : "Off: retrieval only, no API quota"}
             </span>
@@ -100,7 +104,7 @@ export default function StudioPanel(props: Props) {
           <li><b className="text-ink">Fuse</b>: Reciprocal Rank Fusion merges the two lists.</li>
           <li><b className="text-ink">Rerank</b>: a cross-encoder rescores them and keeps the top 5.</li>
           <li><b className="text-ink">Gate</b>: if no passage scores above {threshold.toFixed(1)}, refuse without calling the LLM.</li>
-          <li><b className="text-ink">Answer</b>: Gemini answers only from those passages and cites each claim; invented or missing citations make it refuse.</li>
+          <li><b className="text-ink">Answer</b>: the LLM ({meta?.llm ?? "loading…"}) answers only from those passages and cites each claim; invented or missing citations make it refuse.</li>
         </ol>
         <p className="mt-2 text-xs text-muted">
           Nothing is trained or fine-tuned: all three models are used as-is.
