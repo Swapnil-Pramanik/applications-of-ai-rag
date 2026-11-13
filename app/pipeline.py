@@ -35,7 +35,7 @@ from typing import Literal
 from app.core.config import settings
 from app.generation.gemini import StructuredClient, generate_answer
 from app.generation.schema import Answer
-from app.retrieval.base import Retriever
+from app.retrieval.base import RetrievedChunk, Retriever
 from app.retrieval.confidence import ConfidenceGate, GateDecision
 
 AbstainSource = Literal["gate", "model", None]
@@ -46,6 +46,10 @@ class AnswerResult:
     answer: Answer
     gate: GateDecision
     retrieved_count: int
+    # Everything the retriever returned, best first — including chunks the gate
+    # dropped. The demo UI shows these so a viewer can see *why* the gate
+    # refused or what the model was given.
+    retrieved: tuple[RetrievedChunk, ...] = ()
 
     @property
     def answered(self) -> bool:
@@ -104,7 +108,10 @@ class QueryPipeline:
                 answer=Answer(answered=False, abstain_reason=decision.reason),
                 gate=decision,
                 retrieved_count=len(chunks),
+                retrieved=tuple(chunks),
             )
 
         answer = generate_answer(question, list(decision.chunks), client=self._client)
-        return AnswerResult(answer=answer, gate=decision, retrieved_count=len(chunks))
+        return AnswerResult(
+            answer=answer, gate=decision, retrieved_count=len(chunks), retrieved=tuple(chunks)
+        )

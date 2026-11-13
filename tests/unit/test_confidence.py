@@ -164,6 +164,21 @@ def test_an_answered_result_has_no_abstain_source() -> None:
     assert result.answered and result.abstain_source is None
 
 
+def test_the_result_keeps_every_retrieved_chunk_including_ones_the_gate_dropped() -> None:
+    """The demo shows what the reranker saw, not only what survived the gate."""
+    retrieved = [chunk(0, 7.0), chunk(1, -8.0)]
+    answered = QueryPipeline(
+        reranking(retrieved), gate=ConfidenceGate(threshold=0.0), client=StubClient()
+    ).answer("q")
+    refused = QueryPipeline(
+        reranking([chunk(2, -8.0)]), gate=ConfidenceGate(threshold=0.0), client=StubClient()
+    ).answer("q")
+
+    assert answered.retrieved == tuple(retrieved)
+    assert len(answered.gate.chunks) == 1
+    assert [c.vector_id for c in refused.retrieved] == [2]
+
+
 # --- calibration -----------------------------------------------------------
 
 
