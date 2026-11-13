@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from pydantic import BaseModel, Field
 
+from api.notebook import GuideStatus, SourceInfo
 from ui.service import STRATEGY_LABELS, DemoResult, Status, numbered_claims, paper_title
 
 
@@ -16,6 +17,8 @@ class QueryRequest(BaseModel):
     question: str = Field(min_length=1, max_length=1000)
     strategy: str = "hybrid+rerank"
     generate: bool = True
+    # Filenames to answer from. Only these sources are searched.
+    sources: list[str] = Field(min_length=1)
 
 
 class Passage(BaseModel):
@@ -112,30 +115,42 @@ def to_response(result: DemoResult) -> QueryResponse:
     )
 
 
-class Paper(BaseModel):
-    title: str
-    chunks: int
-    uploaded: bool
-
-
 class StrategyOut(BaseModel):
     key: str
     label: str
 
 
-class ExampleOut(BaseModel):
+class MetaResponse(BaseModel):
+    strategies: list[StrategyOut]
+    gate_threshold: float
+    max_upload_mb: int
+
+
+class CaseStudyOut(BaseModel):
+    kind: str
     label: str
     question: str
+    expect: str
 
 
-class MetaResponse(BaseModel):
-    papers: list[Paper]
-    chunk_count: int
-    strategies: list[StrategyOut]
-    examples: list[ExampleOut]
-
-
-class UploadResponse(BaseModel):
+class SourceOut(BaseModel):
     filename: str
     chunks: int
-    chunk_count: int
+    guide_status: GuideStatus
+    guide_error: str | None
+    summary: str | None
+    case_studies: list[CaseStudyOut]
+
+
+def source_out(info: SourceInfo) -> SourceOut:
+    return SourceOut(
+        filename=info.filename,
+        chunks=info.chunks,
+        guide_status=info.guide.status,
+        guide_error=info.guide.error,
+        summary=info.guide.guide.summary if info.guide.guide else None,
+        case_studies=[
+            CaseStudyOut(kind=c.kind, label=c.label, question=c.question, expect=c.expect)
+            for c in info.case_studies
+        ],
+    )

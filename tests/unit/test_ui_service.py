@@ -18,7 +18,14 @@ from app.ingestion.embedder import Embedder
 from app.ingestion.pipeline import EmbeddedChunk
 from app.retrieval.reranker import Reranker
 from eval.harness.corpus_index import STRATEGIES, EvalCorpus
-from ui.service import EXAMPLES, STRATEGY_LABELS, DemoService, UploadError, numbered_claims
+from ui.service import (
+    EXAMPLES,
+    STRATEGY_LABELS,
+    DemoService,
+    NoSourcesError,
+    UploadError,
+    numbered_claims,
+)
 
 TEXTS = [
     ("1412.6980.pdf", "adam default settings are alpha 0.001 beta1 0.9 beta2 0.999"),
@@ -195,3 +202,45 @@ def test_uploading_a_duplicate_or_empty_file_is_rejected(tmp_path: Path) -> None
     with pytest.raises(UploadError, match="no text"):
         demo.add_document(empty)
     assert demo.uploaded == []
+
+
+def test_questions_search_only_the_selected_sources() -> None:
+    # Three chunks per file, "optimizer" in one chunk of each: enough chunks for BM25's IDF.
+    texts = [
+        (f, t)
+        for f in ("a.txt", "b.txt")
+        for t in ("the optimizer setting", "residual blocks", "image patches")
+    ]
+    chunks = [
+        EmbeddedChunk(vector_id=i, chunk_index=i, page_number=1, text=t, source_filename=f)
+        for i, (f, t) in enumerate(texts)
+    ]
+    corpus = EvalCorpus(chunks, np.ones((6, settings.embedding_dim), dtype="float32"), 600, 90)
+    demo = DemoService(corpus, reranker=FixedReranker(5.0), client=StubClient())
+
+    only_b = demo.ask("optimizer", "sparse", generate=False, sources=["b.txt"])
+    assert [c.source_filename for c in only_b.retrieved] == ["b.txt"]
+    both = demo.ask("optimizer", "sparse", generate=False)
+    assert {c.source_filename for c in both.retrieved} == {"a.txt", "b.txt"}
+
+
+def test_asking_with_no_matching_source_is_an_error() -> None:
+    with pytest.raises(NoSourcesError):
+        service().ask("adam", "sparse", generate=False, sources=["missing.pdf"])
+    with pytest.raises(NoSourcesError):
+        DemoService(EvalCorpus.empty(), reranker=FixedReranker(5.0)).ask(
+            "adam", "sparse", generate=False
+        )
+
+
+def test_a_removed_source_is_no_longer_searched(tmp_path: Path) -> None:
+    demo = uploading_service()
+    doc = tmp_path / "notes.txt"
+    doc.write_text("zebrafish optimizer", encoding="utf-8")
+    demo.add_document(doc)
+    demo.remove_document("notes.txt")
+    assert demo.uploaded == [] and "notes.txt" not in demo.chunk_counts()
+    top = demo.ask("zebrafish optimizer", "sparse", generate=False).retrieved
+    assert all(c.source_filename != "notes.txt" for c in top)
+    with pytest.raises(KeyError):
+        demo.remove_document("notes.txt")

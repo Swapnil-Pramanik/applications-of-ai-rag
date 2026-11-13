@@ -1,11 +1,10 @@
-"""FastAPI app: `make api` serves it on http://localhost:8000 (docs at /docs).
+"""FastAPI app for the notebook UI: `make api` serves it on http://localhost:8000 (docs at /docs).
 
-Four routes, all thin wrappers over `DemoService`, so the API answers exactly
-like the Streamlit demo and the eval harness. Deliberately no auth, database,
-rate limiting or streaming: this is a local demo backend, not a public service.
-
-The service (corpus + both models) loads once at startup and lives on
-`app.state`; tests swap in a stub through `create_app(service=...)`.
+NotebookLM-style: the notebook starts empty, you add sources, and every
+question is answered only from the sources you select. Each route is a thin
+wrapper over `NotebookService`, which wraps the same `DemoService` the eval
+harness measures. Deliberately no auth, database, rate limiting or streaming:
+this is a local demo backend, and state lives in memory until restart.
 """
 
 from __future__ import annotations
@@ -20,40 +19,45 @@ from fastapi import Depends, FastAPI, HTTPException, Request, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 
+from api.notebook import NotebookService
 from api.schemas import (
-    ExampleOut,
     MetaResponse,
-    Paper,
     QueryRequest,
     QueryResponse,
+    SourceOut,
     StrategyOut,
-    UploadResponse,
+    source_out,
     to_response,
 )
+from app.core.config import settings
 from app.ingestion.parsers import UnsupportedFormatError
-from ui.service import EXAMPLES, STRATEGY_LABELS, DemoService, UploadError, load_service
+from eval.harness.corpus_index import EvalCorpus
+from ui.service import STRATEGY_LABELS, DemoService, NoSourcesError, UploadError
 
-MAX_UPLOAD_BYTES = 20 * 1024 * 1024
+MAX_UPLOAD_MB = 20
 ALLOWED_SUFFIXES = (".pdf", ".docx", ".txt", ".md")
 
 
-def get_service(request: Request) -> DemoService:
-    service: DemoService = request.app.state.service
-    return service
+def empty_notebook() -> NotebookService:
+    return NotebookService(DemoService(EvalCorpus.empty()))
 
 
-Service = Annotated[DemoService, Depends(get_service)]
+def get_notebook(request: Request) -> NotebookService:
+    notebook: NotebookService = request.app.state.notebook
+    return notebook
 
 
-def create_app(service: DemoService | None = None) -> FastAPI:
+Notebook = Annotated[NotebookService, Depends(get_notebook)]
+
+
+def create_app(notebook: NotebookService | None = None) -> FastAPI:
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
-        app.state.service = service if service is not None else load_service()
+        app.state.notebook = notebook if notebook is not None else empty_notebook()
         yield
 
-    app = FastAPI(title="Ask the Papers API", version="1.0", lifespan=lifespan)
-    # The Next.js dev server proxies /api to here, so CORS is only needed when
-    # the frontend calls the API directly from another port.
+    app = FastAPI(title="Notebook API", version="2.0", lifespan=lifespan)
+    # The browser calls the API directly from the Next.js dev server.
     app.add_middleware(
         CORSMiddleware,
         allow_origins=["http://localhost:3000"],
@@ -62,54 +66,62 @@ def create_app(service: DemoService | None = None) -> FastAPI:
     )
 
     @app.get("/api/health")
-    def health(svc: Service) -> dict[str, object]:
-        return {"status": "ok", "chunks": svc.chunk_count}
+    def health(nb: Notebook) -> dict[str, object]:
+        return {"status": "ok", "sources": len(nb.sources()), "chunks": nb.chunk_count}
 
     @app.get("/api/meta", response_model=MetaResponse)
-    def meta(svc: Service) -> MetaResponse:
-        uploaded = set(svc.uploaded)
+    def meta() -> MetaResponse:
         return MetaResponse(
-            papers=[
-                Paper(title=title, chunks=count, uploaded=title in uploaded)
-                for title, count in svc.papers()
-            ],
-            chunk_count=svc.chunk_count,
             strategies=[StrategyOut(key=k, label=v) for k, v in STRATEGY_LABELS.items()],
-            examples=[ExampleOut(label=e.label, question=e.question) for e in EXAMPLES],
+            gate_threshold=settings.confidence_threshold,
+            max_upload_mb=MAX_UPLOAD_MB,
         )
 
-    @app.post("/api/query", response_model=QueryResponse)
-    def query(body: QueryRequest, svc: Service) -> QueryResponse:
-        if body.strategy not in STRATEGY_LABELS:
-            raise HTTPException(422, f"unknown strategy {body.strategy!r}")
-        question = body.question.strip()
-        if not question:
-            raise HTTPException(422, "question is empty")
-        return to_response(svc.ask(question, body.strategy, generate=body.generate))
+    @app.get("/api/sources", response_model=list[SourceOut])
+    def list_sources(nb: Notebook) -> list[SourceOut]:
+        return [source_out(s) for s in nb.sources()]
 
-    @app.post("/api/upload", response_model=UploadResponse)
-    async def upload(file: UploadFile, svc: Service) -> UploadResponse:
+    @app.post("/api/sources", response_model=SourceOut)
+    async def add_source(file: UploadFile, nb: Notebook) -> SourceOut:
         # Path(...).name drops any directory part a client sends in the filename.
         name = Path(file.filename or "").name
         if not name.lower().endswith(ALLOWED_SUFFIXES):
             raise HTTPException(415, f"supported file types: {', '.join(ALLOWED_SUFFIXES)}")
-        data = await file.read(MAX_UPLOAD_BYTES + 1)
-        if len(data) > MAX_UPLOAD_BYTES:
-            raise HTTPException(413, "file is larger than 20 MB")
+        data = await file.read(MAX_UPLOAD_MB * 1024 * 1024 + 1)
+        if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
+            raise HTTPException(413, f"file is larger than {MAX_UPLOAD_MB} MB")
 
         with tempfile.TemporaryDirectory() as tmp:
             path = Path(tmp) / name
             path.write_bytes(data)
             try:
                 # Parsing and embedding are CPU-bound; keep them off the event loop.
-                result = await run_in_threadpool(svc.add_document, path)
+                await run_in_threadpool(nb.add_source, path)
             except (UploadError, UnsupportedFormatError) as error:
                 raise HTTPException(422, str(error)) from error
             except Exception as error:  # a corrupt PDF raises from deep inside PyMuPDF
                 raise HTTPException(422, f"could not read {name}: {error}") from error
-        return UploadResponse(
-            filename=result.filename, chunks=result.chunks, chunk_count=svc.chunk_count
-        )
+        return next(source_out(s) for s in nb.sources() if s.filename == name)
+
+    @app.delete("/api/sources/{filename}", status_code=204)
+    def remove_source(filename: str, nb: Notebook) -> None:
+        try:
+            nb.remove_source(filename)
+        except KeyError as error:
+            raise HTTPException(404, f"no source named {filename!r}") from error
+
+    @app.post("/api/query", response_model=QueryResponse)
+    def query(body: QueryRequest, nb: Notebook) -> QueryResponse:
+        if body.strategy not in STRATEGY_LABELS:
+            raise HTTPException(422, f"unknown strategy {body.strategy!r}")
+        question = body.question.strip()
+        if not question:
+            raise HTTPException(422, "question is empty")
+        try:
+            result = nb.ask(question, body.strategy, generate=body.generate, sources=body.sources)
+        except NoSourcesError as error:
+            raise HTTPException(422, str(error)) from error
+        return to_response(result)
 
     return app
 

@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -68,6 +69,27 @@ class EvalCorpus:
     vectors: Vector
     chunk_size: int
     chunk_overlap: int
+
+    @classmethod
+    def empty(cls, chunk_size: int | None = None, chunk_overlap: int | None = None) -> EvalCorpus:
+        """A corpus with no documents yet: the notebook API starts from this."""
+        return cls(
+            [],
+            np.empty((0, settings.embedding_dim), dtype="float32"),
+            chunk_size if chunk_size is not None else settings.chunk_size,
+            chunk_overlap if chunk_overlap is not None else settings.chunk_overlap,
+        )
+
+    def subset(self, filenames: Collection[str]) -> EvalCorpus:
+        """Only the chunks of these source files (vector ids unchanged)."""
+        wanted = set(filenames)
+        keep = [i for i, chunk in enumerate(self.chunks) if chunk.source_filename in wanted]
+        return EvalCorpus(
+            [self.chunks[i] for i in keep],
+            self.vectors[keep],
+            self.chunk_size,
+            self.chunk_overlap,
+        )
 
     @property
     def texts(self) -> list[str]:

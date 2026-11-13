@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import threading
 import time
+from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
@@ -82,6 +83,10 @@ EXAMPLES: tuple[Example, ...] = (
 
 class UploadError(ValueError):
     """An upload that cannot be added: duplicate name or nothing to index."""
+
+
+class NoSourcesError(ValueError):
+    """A question was asked with no (known) source selected, so there is nothing to search."""
 
 
 @dataclass(frozen=True)
@@ -171,7 +176,8 @@ class DemoService:
         self._reranker = reranker or Reranker()
         self._client = client
         self._top_k = top_k if top_k is not None else settings.top_k
-        self._retrievers: dict[str, Retriever] = {}
+        # Keyed by (strategy, selected sources); None means "every source".
+        self._retrievers: dict[tuple[str, frozenset[str] | None], Retriever] = {}
 
     @property
     def chunk_count(self) -> int:
@@ -185,18 +191,45 @@ class DemoService:
             counts[title] = counts.get(title, 0) + 1
         return sorted(counts.items())
 
+    def chunk_counts(self) -> dict[str, int]:
+        """Number of chunks per source filename."""
+        counts: dict[str, int] = {}
+        for chunk in self._corpus.chunks:
+            counts[chunk.source_filename] = counts.get(chunk.source_filename, 0) + 1
+        return counts
+
     @property
     def uploaded(self) -> list[str]:
         """Filenames added with `add_document`, in upload order."""
         return list(self._uploaded)
 
-    def retriever(self, strategy: str) -> Retriever:
+    def retriever(self, strategy: str, sources: Collection[str] | None = None) -> Retriever:
+        """The retriever for `strategy`, searching only `sources` (all when None).
+
+        A subset gets its own FAISS + BM25 index rather than filtering a shared
+        one after the fact: filtering top-k results would silently return fewer
+        than k passages whenever the other sources crowd the selected one out.
+        """
+        selected = frozenset(sources) if sources is not None else None
+        key = (strategy, selected)
         with self._lock:
-            if strategy not in self._retrievers:
-                self._retrievers[strategy] = self._corpus.build_retriever(
-                    strategy, reranker=self._reranker
-                )
-            return self._retrievers[strategy]
+            if key not in self._retrievers:
+                corpus = self._corpus if selected is None else self._corpus.subset(selected)
+                if not corpus.chunks:
+                    raise NoSourcesError("no sources selected: add or tick a source first")
+                self._retrievers[key] = corpus.build_retriever(strategy, reranker=self._reranker)
+            return self._retrievers[key]
+
+    def remove_document(self, filename: str) -> None:
+        """Drop one source. Raises KeyError if it is not in the corpus."""
+        with self._lock:
+            if filename not in {c.source_filename for c in self._corpus.chunks}:
+                raise KeyError(filename)
+            keep = [c.source_filename for c in self._corpus.chunks if c.source_filename != filename]
+            self._corpus = self._corpus.subset(keep)
+            self._retrievers.clear()
+            if filename in self._uploaded:
+                self._uploaded.remove(filename)
 
     def add_document(self, path: Path) -> UploadResult:
         """Parse, chunk and embed one file and make it searchable.
@@ -235,9 +268,20 @@ class DemoService:
             self._uploaded.append(path.name)
         return UploadResult(filename=path.name, chunks=len(result.chunks))
 
-    def ask(self, question: str, strategy: str, *, generate: bool = True) -> DemoResult:
+    def ask(
+        self,
+        question: str,
+        strategy: str,
+        *,
+        generate: bool = True,
+        sources: Collection[str] | None = None,
+    ) -> DemoResult:
+        """Answer from `sources` only (every source when None).
+
+        Raises `NoSourcesError` when the selection contains no indexed text.
+        """
         started = time.perf_counter()
-        retriever = self.retriever(strategy)
+        retriever = self.retriever(strategy, sources)
         gate = ConfidenceGate() if getattr(retriever, "emits_calibrated_scores", False) else None
 
         if generate:
