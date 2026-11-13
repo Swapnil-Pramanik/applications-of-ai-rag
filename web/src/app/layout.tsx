@@ -13,7 +13,13 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${inter.variable} ${newsreader.variable} h-full antialiased`}>
+    // suppressHydrationWarning: browser extensions add attributes to <html> (e.g. webcrx="")
+    // before React loads. It only silences attribute mismatches on this one element.
+    <html
+      lang="en"
+      className={`${inter.variable} ${newsreader.variable} h-full antialiased`}
+      suppressHydrationWarning
+    >
       <body className="min-h-full font-sans">{children}</body>
     </html>
   );
