@@ -21,7 +21,7 @@ def guide_client() -> GuideClient:
 
 
 def llm_label() -> str:
-    """Human-readable name of the configured model, for the UI."""
+    """The configured model's name only (no provider), for the UI."""
     if settings.llm_provider == "groq":
-        return f"{settings.groq_model.split('/')[-1]} on Groq"
-    return f"{settings.gemini_model} (Google)"
+        return settings.groq_model.split("/")[-1]
+    return settings.gemini_model

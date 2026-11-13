@@ -91,11 +91,11 @@ def test_the_provider_setting_picks_the_client(monkeypatch: pytest.MonkeyPatch) 
     monkeypatch.setattr(config.settings, "llm_provider", "groq")
     assert isinstance(llm.answer_client(), GroqClient)
     assert isinstance(llm.guide_client(), GroqClient)
-    assert "Groq" in llm.llm_label()
+    assert llm.llm_label() == "gpt-oss-120b"
     monkeypatch.setattr(config.settings, "llm_provider", "gemini")
     assert isinstance(llm.answer_client(), GeminiClient)
     assert isinstance(llm.guide_client(), GeminiGuideClient)
-    assert "gemini" in llm.llm_label()
+    assert llm.llm_label() == config.settings.gemini_model
 
 
 def test_an_unknown_provider_is_rejected() -> None:

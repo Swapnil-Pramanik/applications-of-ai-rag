@@ -266,7 +266,7 @@ Uploaded sources and their guides live in memory and are gone when the API resta
 | Endpoint | Method | Purpose |
 |---|---|---|
 | `/api/health` | GET | liveness, source and chunk counts |
-| `/api/meta` | GET | LLM label, retrievers, gate threshold, max upload size |
+| `/api/meta` | GET | model name (no provider), retrievers, gate threshold, max upload size |
 | `/api/sources` | GET | sources in upload order with guide status, summary, case studies |
 | `/api/sources` | POST | multipart `file` (.pdf/.docx/.txt/.md, ≤20 MB) → `SourceOut` (guide pending) |
 | `/api/sources/{filename}` | DELETE | remove a source (204; 404 if unknown) |
