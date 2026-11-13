@@ -1,5 +1,5 @@
 [project]
-name = "applications-of-ai-sam-project"
+name = "applications-of-ai-project"
 version = "0.1.0"
 description = "Cited question answering over ML research papers (hybrid retrieval + reranking + abstention)"
 requires-python = ">=3.11"

@@ -40,7 +40,7 @@ wheels = [
 ]
 
 [[package]]
-name = "applications-of-ai-sam-project"
+name = "applications-of-ai-project"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

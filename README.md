@@ -1,4 +1,4 @@
-# Applications of AI — SAM Project
+# Applications of AI Project
 
 **Cited question answering over ML research papers.** Ask a natural-language question across 18
 landmark ML papers (Transformer, BERT, ResNet, GAN, Adam, LoRA, RAG, PPO, …) and get an answer
